@@ -118,7 +118,6 @@ close.MouseButton1Click:Connect(function() gui:Destroy() end)
 
 -- ⚙️ Переменные
 local espEnabled = false
-local noclipEnabled = false
 local walkSpeedEnabled = false
 local basePosition = nil
 local espFolder = Instance.new("Folder", game.CoreGui)
@@ -145,23 +144,6 @@ espBtn.MouseButton1Click:Connect(function()
 				t.TextColor3 = Color3.fromRGB(0, 255, 0)
 				t.TextScaled = true
 				t.Font = Enum.Font.SourceSansBold
-			end
-		end
-	end
-end)
-
--- 🚫 Noclip
-local noclipBtn = createBtn("Noclip: OFF", 90)
-noclipBtn.MouseButton1Click:Connect(function()
-	noclipEnabled = not noclipEnabled
-	noclipBtn.Text = "Noclip: " .. (noclipEnabled and "ON" or "OFF")
-end)
-
-RunService.Stepped:Connect(function()
-	if noclipEnabled and LocalPlayer.Character then
-		for _, part in pairs(LocalPlayer.Character:GetDescendants()) do
-			if part:IsA("BasePart") then
-				part.CanCollide = false
 			end
 		end
 	end
@@ -194,5 +176,155 @@ end)
 tpBtn.MouseButton1Click:Connect(function()
 	if basePosition and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
 		LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(basePosition + Vector3.new(0, 5, 0))
+	end
+end)
+
+-- -------------------------------
+-- Кнопка Noclip, загружающая скрипт с заголовком "Noclip Bypass"
+
+local noclipBtn = createBtn("Noclip: OFF", 90)
+local noclipLoaded = false
+
+local noclipScript = [==[
+-- 🌟 Noclip Bypass + Full Float (вверх/вниз)
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local LocalPlayer = Players.LocalPlayer
+local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+local HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
+
+-- GUI
+local gui = Instance.new("ScreenGui", game.CoreGui)
+gui.Name = "SoftKillzFloatGui"
+
+local frame = Instance.new("Frame", gui)
+frame.Position = UDim2.new(0.7, 0, 0.55, 0)
+frame.Size = UDim2.new(0, 180, 0, 80)
+frame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+frame.BorderSizePixel = 0
+frame.BackgroundTransparency = 0.2
+
+local title = Instance.new("TextLabel", frame)
+title.Size = UDim2.new(1, 0, 0.25, 0)
+title.BackgroundTransparency = 1
+title.Text = "Noclip Bypass"
+title.TextColor3 = Color3.fromRGB(255, 0, 255)
+title.Font = Enum.Font.SourceSansBold
+title.TextScaled = true
+
+local noclipBtn = Instance.new("TextButton", frame)
+noclipBtn.Position = UDim2.new(0.05, 0, 0.35, 0)
+noclipBtn.Size = UDim2.new(0.4, 0, 0.3, 0)
+noclipBtn.Text = "NoClip"
+noclipBtn.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
+noclipBtn.TextScaled = true
+noclipBtn.Font = Enum.Font.SourceSansBold
+
+local plusBtn = Instance.new("TextButton", frame)
+plusBtn.Position = UDim2.new(0.5, 5, 0.35, 0)
+plusBtn.Size = UDim2.new(0.2, 0, 0.3, 0)
+plusBtn.Text = "+"
+plusBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 255)
+plusBtn.TextScaled = true
+plusBtn.Font = Enum.Font.SourceSansBold
+
+local minusBtn = Instance.new("TextButton", frame)
+minusBtn.Position = UDim2.new(0.75, 5, 0.35, 0)
+minusBtn.Size = UDim2.new(0.2, 0, 0.3, 0)
+minusBtn.Text = "-"
+minusBtn.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
+minusBtn.TextScaled = true
+minusBtn.Font = Enum.Font.SourceSansBold
+
+-- Кнопки вверх и вниз
+local upBtn = Instance.new("TextButton", frame)
+upBtn.Position = UDim2.new(0.05, 0, 0.7, 0)
+upBtn.Size = UDim2.new(0.425, 0, 0.25, 0)
+upBtn.Text = "↑"
+upBtn.BackgroundColor3 = Color3.fromRGB(150, 255, 150)
+upBtn.TextScaled = true
+upBtn.Font = Enum.Font.SourceSansBold
+
+local downBtn = Instance.new("TextButton", frame)
+downBtn.Position = UDim2.new(0.525, 0, 0.7, 0)
+downBtn.Size = UDim2.new(0.425, 0, 0.25, 0)
+downBtn.Text = "↓"
+downBtn.BackgroundColor3 = Color3.fromRGB(255, 200, 100)
+downBtn.TextScaled = true
+downBtn.Font = Enum.Font.SourceSansBold
+
+-- NoClip + Anti-Fall
+local noclip = false
+local floatVelocity, floatGyro, conn
+
+noclipBtn.MouseButton1Click:Connect(function()
+	noclip = not noclip
+
+	if noclip then
+		-- Ложимся
+		HumanoidRootPart.CFrame = HumanoidRootPart.CFrame * CFrame.Angles(math.rad(90), 0, 0)
+
+		-- NoClip
+		conn = RunService.Stepped:Connect(function()
+			for _, part in pairs(LocalPlayer.Character:GetDescendants()) do
+				if part:IsA("BasePart") then
+					part.CanCollide = false
+				end
+			end
+		end)
+
+		-- Плавание
+		floatVelocity = Instance.new("BodyVelocity")
+		floatVelocity.Velocity = Vector3.new(0, 0, 0)
+		floatVelocity.MaxForce = Vector3.new(0, math.huge, 0)
+		floatVelocity.P = 100000
+		floatVelocity.Parent = HumanoidRootPart
+
+		-- Удерживать направление
+		floatGyro = Instance.new("BodyGyro")
+		floatGyro.CFrame = HumanoidRootPart.CFrame
+		floatGyro.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
+		floatGyro.P = 3000
+		floatGyro.Parent = HumanoidRootPart
+	else
+		if conn then conn:Disconnect() end
+		if floatVelocity then floatVelocity:Destroy() end
+		if floatGyro then floatGyro:Destroy() end
+
+		-- Вернуть назад
+		HumanoidRootPart.CFrame = HumanoidRootPart.CFrame * CFrame.Angles(math.rad(-90), 0, 0)
+	end
+end)
+
+-- Движение вперёд/назад
+local moveDistance = 4
+
+plusBtn.MouseButton1Click:Connect(function()
+	HumanoidRootPart.CFrame = HumanoidRootPart.CFrame + HumanoidRootPart.CFrame.LookVector * moveDistance
+end)
+
+minusBtn.MouseButton1Click:Connect(function()
+	HumanoidRootPart.CFrame = HumanoidRootPart.CFrame - HumanoidRootPart.CFrame.LookVector * moveDistance
+end)
+
+-- Вверх/вниз
+upBtn.MouseButton1Click:Connect(function()
+	HumanoidRootPart.CFrame = HumanoidRootPart.CFrame + Vector3.new(0, moveDistance, 0)
+end)
+
+downBtn.MouseButton1Click:Connect(function()
+	HumanoidRootPart.CFrame = HumanoidRootPart.CFrame - Vector3.new(0, moveDistance, 0)
+end)
+]==]
+
+noclipBtn.MouseButton1Click:Connect(function()
+	if not noclipLoaded then
+		noclipLoaded = true
+		noclipBtn.Text = "Noclip: ON"
+		loadstring(noclipScript)()
+	else
+		noclipLoaded = false
+		noclipBtn.Text = "Noclip: OFF"
+		-- Можно добавить логику для отключения, если нужно
 	end
 end)
