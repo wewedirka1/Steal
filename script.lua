@@ -60,7 +60,7 @@ local gui = Instance.new("ScreenGui", game.Players.LocalPlayer:WaitForChild("Pla
 gui.Name = "GendioHubUI"
 
 local frame = Instance.new("Frame", gui)
-frame.Size = UDim2.new(0, 260, 0, 340)
+frame.Size = UDim2.new(0, 260, 0, 380)
 frame.Position = UDim2.new(0, 20, 0, 100)
 frame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
 frame.BorderSizePixel = 0
@@ -119,6 +119,7 @@ close.MouseButton1Click:Connect(function() gui:Destroy() end)
 -- ⚙️ Переменные
 local espEnabled = false
 local walkSpeedEnabled = false
+local infinityJumpEnabled = false
 local basePosition = nil
 local espFolder = Instance.new("Folder", game.CoreGui)
 espFolder.Name = "ESPFolder"
@@ -145,6 +146,28 @@ espBtn.MouseButton1Click:Connect(function()
 				t.TextScaled = true
 				t.Font = Enum.Font.SourceSansBold
 			end
+		end
+	end
+end)
+
+-- 🚀 Infinity Jump
+local infJumpBtn = createBtn("Infinity Jump: OFF", 90)
+local infJumpConnection = nil
+
+infJumpBtn.MouseButton1Click:Connect(function()
+	infinityJumpEnabled = not infinityJumpEnabled
+	infJumpBtn.Text = "Infinity Jump: " .. (infinityJumpEnabled and "ON" or "OFF")
+	
+	if infinityJumpEnabled then
+		infJumpConnection = game:GetService("UserInputService").JumpRequest:Connect(function()
+			if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+				LocalPlayer.Character.Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+			end
+		end)
+	else
+		if infJumpConnection then
+			infJumpConnection:Disconnect()
+			infJumpConnection = nil
 		end
 	end
 end)
@@ -182,7 +205,7 @@ end)
 -- -------------------------------
 -- Кнопка Noclip, загружающая скрипт с заголовком "Noclip Bypass"
 
-local noclipBtn = createBtn("Noclip: OFF", 90)
+local noclipBtn = createBtn("Noclip: OFF", 290)
 local noclipLoaded = false
 
 local noclipScript = [==[
@@ -326,5 +349,22 @@ noclipBtn.MouseButton1Click:Connect(function()
 		noclipLoaded = false
 		noclipBtn.Text = "Noclip: OFF"
 		-- Можно добавить логику для отключения, если нужно
+	end
+end)
+
+-- Обновление walkspeed при респавне
+LocalPlayer.CharacterAdded:Connect(function(character)
+	wait(1)
+	if walkSpeedEnabled then
+		local humanoid = character:WaitForChild("Humanoid")
+		local speed = tonumber(wsBox.Text) or 16
+		humanoid.WalkSpeed = speed
+	end
+	if infinityJumpEnabled then
+		infJumpConnection = game:GetService("UserInputService").JumpRequest:Connect(function()
+			if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+				LocalPlayer.Character.Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+			end
+		end)
 	end
 end)
