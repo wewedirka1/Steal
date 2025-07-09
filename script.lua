@@ -60,7 +60,7 @@ local gui = Instance.new("ScreenGui", game.Players.LocalPlayer:WaitForChild("Pla
 gui.Name = "GendioHubUI"
 
 local frame = Instance.new("Frame", gui)
-frame.Size = UDim2.new(0, 260, 0, 380)
+frame.Size = UDim2.new(0, 260, 0, 420)
 frame.Position = UDim2.new(0, 20, 0, 100)
 frame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
 frame.BorderSizePixel = 0
@@ -202,13 +202,109 @@ tpBtn.MouseButton1Click:Connect(function()
 	end
 end)
 
--- -------------------------------
--- Кнопка Noclip, загружающая скрипт с заголовком "Noclip Bypass"
+-- 🎭 Noclip Type Selector
+local noclipTypeBtn = createBtn("Noclip Type: Normal", 290)
+local noclipTypes = {"Normal", "Steal a Anime"}
+local currentNoclipType = 1
 
-local noclipBtn = createBtn("Noclip: OFF", 290)
+noclipTypeBtn.MouseButton1Click:Connect(function()
+	currentNoclipType = (currentNoclipType % #noclipTypes) + 1
+	noclipTypeBtn.Text = "Noclip Type: " .. noclipTypes[currentNoclipType]
+end)
+
+-- 🌟 Enhanced Noclip System
+local noclipBtn = createBtn("Noclip: OFF", 330)
 local noclipLoaded = false
+local noclipGui = nil
 
-local noclipScript = [==[
+local function createNoclipScript(noclipType)
+	local scriptContent = ""
+	
+	if noclipType == "Normal" then
+		scriptContent = [==[
+-- 🌟 Normal Noclip
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local LocalPlayer = Players.LocalPlayer
+local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+local HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
+
+-- GUI
+local gui = Instance.new("ScreenGui", game.CoreGui)
+gui.Name = "GendioNoclipGui"
+
+local frame = Instance.new("Frame", gui)
+frame.Position = UDim2.new(0.7, 0, 0.55, 0)
+frame.Size = UDim2.new(0, 180, 0, 80)
+frame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+frame.BorderSizePixel = 0
+frame.BackgroundTransparency = 0.2
+
+local uicorner = Instance.new("UICorner", frame)
+uicorner.CornerRadius = UDim.new(0, 8)
+
+local title = Instance.new("TextLabel", frame)
+title.Size = UDim2.new(1, 0, 0.25, 0)
+title.BackgroundTransparency = 1
+title.Text = "Normal Noclip"
+title.TextColor3 = Color3.fromRGB(0, 255, 127)
+title.Font = Enum.Font.SourceSansBold
+title.TextScaled = true
+
+local noclipToggle = Instance.new("TextButton", frame)
+noclipToggle.Position = UDim2.new(0.05, 0, 0.35, 0)
+noclipToggle.Size = UDim2.new(0.9, 0, 0.6, 0)
+noclipToggle.Text = "Toggle Noclip"
+noclipToggle.BackgroundColor3 = Color3.fromRGB(0, 150, 255)
+noclipToggle.TextScaled = true
+noclipToggle.Font = Enum.Font.SourceSansBold
+noclipToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
+
+local noclipCorner = Instance.new("UICorner", noclipToggle)
+noclipCorner.CornerRadius = UDim.new(0, 6)
+
+local noclipActive = false
+local noclipConnection = nil
+
+noclipToggle.MouseButton1Click:Connect(function()
+	noclipActive = not noclipActive
+	
+	if noclipActive then
+		noclipToggle.Text = "Noclip: ON"
+		noclipToggle.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
+		
+		noclipConnection = RunService.Stepped:Connect(function()
+			if LocalPlayer.Character then
+				for _, part in pairs(LocalPlayer.Character:GetDescendants()) do
+					if part:IsA("BasePart") then
+						part.CanCollide = false
+					end
+				end
+			end
+		end)
+	else
+		noclipToggle.Text = "Noclip: OFF"
+		noclipToggle.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
+		
+		if noclipConnection then
+			noclipConnection:Disconnect()
+			noclipConnection = nil
+		end
+		
+		if LocalPlayer.Character then
+			for _, part in pairs(LocalPlayer.Character:GetDescendants()) do
+				if part:IsA("BasePart") then
+					part.CanCollide = true
+				end
+			end
+		end
+	end
+end)
+
+return gui
+]==]
+	elseif noclipType == "Steal a Anime" then
+		scriptContent = [==[
 -- 🌟 Noclip Bypass + Full Float (вверх/вниз)
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -218,7 +314,7 @@ local HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
 
 -- GUI
 local gui = Instance.new("ScreenGui", game.CoreGui)
-gui.Name = "SoftKillzFloatGui"
+gui.Name = "GendioNoclipGui"
 
 local frame = Instance.new("Frame", gui)
 frame.Position = UDim2.new(0.7, 0, 0.55, 0)
@@ -338,17 +434,45 @@ end)
 downBtn.MouseButton1Click:Connect(function()
 	HumanoidRootPart.CFrame = HumanoidRootPart.CFrame - Vector3.new(0, moveDistance, 0)
 end)
+
+return gui
 ]==]
+	end
+	
+	return scriptContent
+end
 
 noclipBtn.MouseButton1Click:Connect(function()
 	if not noclipLoaded then
 		noclipLoaded = true
 		noclipBtn.Text = "Noclip: ON"
-		loadstring(noclipScript)()
+		
+		local selectedType = noclipTypes[currentNoclipType]
+		local scriptContent = createNoclipScript(selectedType)
+		
+		-- Выполнить скрипт и сохранить GUI
+		local success, result = pcall(function()
+			return loadstring(scriptContent)()
+		end)
+		
+		if success then
+			noclipGui = result
+		end
 	else
 		noclipLoaded = false
 		noclipBtn.Text = "Noclip: OFF"
-		-- Можно добавить логику для отключения, если нужно
+		
+		-- Удалить GUI если он существует
+		if noclipGui then
+			noclipGui:Destroy()
+			noclipGui = nil
+		end
+		
+		-- Найти и удалить GUI по имени
+		local existingGui = game.CoreGui:FindFirstChild("GendioNoclipGui")
+		if existingGui then
+			existingGui:Destroy()
+		end
 	end
 end)
 
