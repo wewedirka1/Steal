@@ -60,7 +60,7 @@ local gui = Instance.new("ScreenGui", game.Players.LocalPlayer:WaitForChild("Pla
 gui.Name = "GendioHubUI"
 
 local frame = Instance.new("Frame", gui)
-frame.Size = UDim2.new(0, 260, 0, 380)
+frame.Size = UDim2.new(0, 260, 0, 420) -- Increased height to accommodate new button
 frame.Position = UDim2.new(0, 20, 0, 100)
 frame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
 frame.BorderSizePixel = 0
@@ -123,89 +123,10 @@ local infinityJumpEnabled = false
 local basePosition = nil
 local espFolder = Instance.new("Folder", game.CoreGui)
 espFolder.Name = "ESPFolder"
+local platform = nil -- For LeavePlayer platform
 
--- 🔍 ESP
-local espBtn = createBtn("ESP: OFF", 50)
-espBtn.MouseButton1Click:Connect(function()
-	espEnabled = not espEnabled
-	espBtn.Text = "ESP: " .. (espEnabled and "ON" or "OFF")
-	for _, c in pairs(espFolder:GetChildren()) do c:Destroy() end
-	if espEnabled then
-		for _, p in pairs(Players:GetPlayers()) do
-			if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("Head") then
-				local b = Instance.new("BillboardGui", espFolder)
-				b.Adornee = p.Character.Head
-				b.Size = UDim2.new(0, 100, 0, 40)
-				b.AlwaysOnTop = true
-				b.StudsOffset = Vector3.new(0, 2, 0)
-				local t = Instance.new("TextLabel", b)
-				t.Size = UDim2.new(1, 0, 1, 0)
-				t.BackgroundTransparency = 1
-				t.Text = p.Name
-				t.TextColor3 = Color3.fromRGB(0, 255, 0)
-				t.TextScaled = true
-				t.Font = Enum.Font.SourceSansBold
-			end
-		end
-	end
-end)
-
--- 🚀 Infinity Jump
-local infJumpBtn = createBtn("Infinity Jump: OFF", 90)
-local infJumpConnection = nil
-
-infJumpBtn.MouseButton1Click:Connect(function()
-	infinityJumpEnabled = not infinityJumpEnabled
-	infJumpBtn.Text = "Infinity Jump: " .. (infinityJumpEnabled and "ON" or "OFF")
-	
-	if infinityJumpEnabled then
-		infJumpConnection = game:GetService("UserInputService").JumpRequest:Connect(function()
-			if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
-				LocalPlayer.Character.Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
-			end
-		end)
-	else
-		if infJumpConnection then
-			infJumpConnection:Disconnect()
-			infJumpConnection = nil
-		end
-	end
-end)
-
--- 🏃 WalkSpeed
-local wsBtn = createBtn("WalkSpeed: OFF", 130)
-local wsBox = createBox(170, "Speed (e.g. 50)")
-
-wsBtn.MouseButton1Click:Connect(function()
-	walkSpeedEnabled = not walkSpeedEnabled
-	wsBtn.Text = "WalkSpeed: " .. (walkSpeedEnabled and "ON" or "OFF")
-	local speed = tonumber(wsBox.Text) or 16
-	if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
-		LocalPlayer.Character.Humanoid.WalkSpeed = walkSpeedEnabled and speed or 16
-	end
-end)
-
--- 📍 SetBase / TPBase
-local setBtn = createBtn("📌 Set Base", 210)
-local tpBtn = createBtn("🚀 TP to Base", 250)
-
-setBtn.MouseButton1Click:Connect(function()
-	if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-		basePosition = LocalPlayer.Character.HumanoidRootPart.Position
-		setBtn.Text = "📌 Base Set!"
-	end
-end)
-
-tpBtn.MouseButton1Click:Connect(function()
-	if basePosition and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-		LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(basePosition + Vector3.new(0, 5, 0))
-	end
-end)
-
--- -------------------------------
--- Кнопка Noclip, загружающая скрипт с заголовком "Noclip Bypass"
-
-local noclipBtn = createBtn("Noclip: OFF", 290)
+-- Noclip (Moved to top)
+local noclipBtn = createBtn("Noclip: OFF", 50)
 local noclipLoaded = false
 
 local noclipScript = [==[
@@ -259,7 +180,6 @@ minusBtn.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
 minusBtn.TextScaled = true
 minusBtn.Font = Enum.Font.SourceSansBold
 
--- Кнопки вверх и вниз
 local upBtn = Instance.new("TextButton", frame)
 upBtn.Position = UDim2.new(0.05, 0, 0.7, 0)
 upBtn.Size = UDim2.new(0.425, 0, 0.25, 0)
@@ -284,10 +204,7 @@ noclipBtn.MouseButton1Click:Connect(function()
 	noclip = not noclip
 
 	if noclip then
-		-- Ложимся
 		HumanoidRootPart.CFrame = HumanoidRootPart.CFrame * CFrame.Angles(math.rad(90), 0, 0)
-
-		-- NoClip
 		conn = RunService.Stepped:Connect(function()
 			for _, part in pairs(LocalPlayer.Character:GetDescendants()) do
 				if part:IsA("BasePart") then
@@ -295,15 +212,11 @@ noclipBtn.MouseButton1Click:Connect(function()
 				end
 			end
 		end)
-
-		-- Плавание
 		floatVelocity = Instance.new("BodyVelocity")
 		floatVelocity.Velocity = Vector3.new(0, 0, 0)
 		floatVelocity.MaxForce = Vector3.new(0, math.huge, 0)
 		floatVelocity.P = 100000
 		floatVelocity.Parent = HumanoidRootPart
-
-		-- Удерживать направление
 		floatGyro = Instance.new("BodyGyro")
 		floatGyro.CFrame = HumanoidRootPart.CFrame
 		floatGyro.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
@@ -313,28 +226,20 @@ noclipBtn.MouseButton1Click:Connect(function()
 		if conn then conn:Disconnect() end
 		if floatVelocity then floatVelocity:Destroy() end
 		if floatGyro then floatGyro:Destroy() end
-
-		-- Вернуть назад
 		HumanoidRootPart.CFrame = HumanoidRootPart.CFrame * CFrame.Angles(math.rad(-90), 0, 0)
 	end
 end)
 
--- Движение вперёд/назад
 local moveDistance = 4
-
 plusBtn.MouseButton1Click:Connect(function()
 	HumanoidRootPart.CFrame = HumanoidRootPart.CFrame + HumanoidRootPart.CFrame.LookVector * moveDistance
 end)
-
 minusBtn.MouseButton1Click:Connect(function()
 	HumanoidRootPart.CFrame = HumanoidRootPart.CFrame - HumanoidRootPart.CFrame.LookVector * moveDistance
 end)
-
--- Вверх/вниз
 upBtn.MouseButton1Click:Connect(function()
 	HumanoidRootPart.CFrame = HumanoidRootPart.CFrame + Vector3.new(0, moveDistance, 0)
 end)
-
 downBtn.MouseButton1Click:Connect(function()
 	HumanoidRootPart.CFrame = HumanoidRootPart.CFrame - Vector3.new(0, moveDistance, 0)
 end)
@@ -348,11 +253,112 @@ noclipBtn.MouseButton1Click:Connect(function()
 	else
 		noclipLoaded = false
 		noclipBtn.Text = "Noclip: OFF"
-		-- Можно добавить логику для отключения, если нужно
 	end
 end)
 
--- Обновление walkspeed при респавне
+-- 🔍 ESP
+local espBtn = createBtn("ESP: OFF", 90)
+espBtn.MouseButton1Click:Connect(function()
+	espEnabled = not espEnabled
+	espBtn.Text = "ESP: " .. (espEnabled and "ON" or "OFF")
+	for _, c in pairs(espFolder:GetChildren()) do c:Destroy() end
+	if espEnabled then
+		for _, p in pairs(Players:GetPlayers()) do
+			if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("Head") then
+				local b = Instance.new("BillboardGui", espFolder)
+				b.Adornee = p.Character.Head
+				b.Size = UDim2.new(0, 100, 0, 40)
+				b.AlwaysOnTop = true
+				b.StudsOffset = Vector3.new(0, 2, 0)
+				local t = Instance.new("TextLabel", b)
+				t.Size = UDim2.new(1, 0, 1, 0)
+				t.BackgroundTransparency = 1
+				t.Text = p.Name
+				t.TextColor3 = Color3.fromRGB(0, 255, 0)
+				t.TextScaled = true
+				t.Font = Enum.Font.SourceSansBold
+			end
+		end
+	end
+end)
+
+-- 🚀 Infinity Jump
+local infJumpBtn = createBtn("Infinity Jump: OFF", 130)
+local infJumpConnection = nil
+
+infJumpBtn.MouseButton1Click:Connect(function()
+	infinityJumpEnabled = not infinityJumpEnabled
+	infJumpBtn.Text = "Infinity Jump: " .. (infinityJumpEnabled and "ON" or "OFF")
+	
+	if infinityJumpEnabled then
+		infJumpConnection = game:GetService("UserInputService").JumpRequest:Connect(function()
+			if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+				LocalPlayer.Character.Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+			end
+		end)
+	else
+		if infJumpConnection then
+			infJumpConnection:Disconnect()
+			infJumpConnection = nil
+		end
+	end
+end)
+
+-- 🏃 WalkSpeed
+local wsBtn = createBtn("WalkSpeed: OFF", 170)
+local wsBox = createBox(210, "Speed (e.g. 50)")
+
+wsBtn.MouseButton1Click:Connect(function()
+	walkSpeedEnabled = not walkSpeedEnabled
+	wsBtn.Text = "WalkSpeed: " .. (walkSpeedEnabled and "ON" or "OFF")
+	local speed = tonumber(wsBox.Text) or 16
+	if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+		LocalPlayer.Character.Humanoid.WalkSpeed = walkSpeedEnabled and speed or 16
+	end
+end)
+
+-- 📍 SetBase / TPBase
+local setBtn = createBtn("📌 Set Base", 250)
+local tpBtn = createBtn("🚀 TP to Base", 290)
+
+setBtn.MouseButton1Click:Connect(function()
+	if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+		basePosition = LocalPlayer.Character.HumanoidRootPart.Position
+		setBtn.Text = "📌 Base Set!"
+	end
+end)
+
+tpBtn.MouseButton1Click:Connect(function()
+	if basePosition and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+		LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(basePosition + Vector3.new(0, 5, 0))
+	end
+end)
+
+-- ☁️ LeavePlayer
+local leaveBtn = createBtn("☁️ LeavePlayer", 330)
+leaveBtn.MouseButton1Click:Connect(function()
+	if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+		-- Teleport player to sky (high Y position)
+		local skyPosition = Vector3.new(LocalPlayer.Character.HumanoidRootPart.Position.X, 1000, LocalPlayer.Character.HumanoidRootPart.Position.Z)
+		LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(skyPosition + Vector3.new(0, 5, 0))
+		
+		-- Remove existing platform if any
+		if platform then
+			platform:Destroy()
+		end
+		
+		-- Create a new platform
+		platform = Instance.new("Part", workspace)
+		platform.Size = Vector3.new(10, 1, 10)
+		platform.Position = skyPosition
+		platform.Anchored = true -- Prevents the platform from falling
+		platform.BrickColor = BrickColor.new("Institutional white")
+		platform.Material = Enum.Material.SmoothPlastic
+		platform.CanCollide = true
+	end
+end)
+
+-- Обновление walkspeed и infinity jump при респавне
 LocalPlayer.CharacterAdded:Connect(function(character)
 	wait(1)
 	if walkSpeedEnabled then
