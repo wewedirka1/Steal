@@ -1,724 +1,466 @@
-local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
-local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/SaveManager.lua"))()
+-- ESP GUI с мобильной поддержкой
+local Players = game:GetService('Players')
+local RunService = game:GetService('RunService')
+local TweenService = game:GetService('TweenService')
+local UserInputService = game:GetService('UserInputService')
+local LocalPlayer = Players.LocalPlayer
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
-local player = game:GetService("Players").LocalPlayer
-local shop = player.PlayerGui:FindFirstChild("Main") and player.PlayerGui.Main:FindFirstChild("CoinsShop")
+-- Проверка на мобильное устройство
+local isMobile = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
 
-local Window = Fluent:CreateWindow({
-    Title = "GendioHub 〢 Stellar",
-    SubTitle = "discord.gg/hBTDRZrf",
-    TabWidth = 160,
-    Size = UDim2.fromOffset(520, 400),
-    Acrylic = false,
-    Theme = "Darker",
-    MinimizeKey = Enum.KeyCode.LeftControl
-})
-
-local Tabs = {
-    Updates = Window:AddTab({ Title = "Home", Icon = "home" }),
-    Main = Window:AddTab({ Title = "Main", Icon = "rocket" }),
-    Server = Window:AddTab({ Title = "Server", Icon = "server" }),
-    Settings = Window:AddTab({ Title = "Settings", Icon = "settings" }),
+-- Конфиг по умолчанию
+local Config = {
+    ESPEnabled = true,
+    PlayerESP = true,
+    MobESP = true,
+    HeadSize = 10,
+    PlayerColor = Color3.fromRGB(0, 170, 255),
+    MobColor = Color3.fromRGB(255, 0, 0),
+    Transparency = 0.7,
+    PartMaterial = "Neon",
+    HighlightEnabled = true,
+    FillTransparency = 0.3
 }
 
-local plotName
-for _, plot in ipairs(workspace.Plots:GetChildren()) do
-    if plot:FindFirstChild("YourBase", true).Enabled then
-        plotName = plot.Name
-        break
-    end
-end
-
-local remainingTime = workspace.Plots[plotName].Purchases.PlotBlock.Main.BillboardGui.RemainingTime
-local rtp = Tabs.Main:AddParagraph({ Title = "Lock Time: " .. remainingTime.Text })
-
-task.spawn(function()
-    while true do
-        rtp:SetTitle("Lock Time: " .. remainingTime.Text)
-        task.wait(0.25)
-    end
-end)
-
-Tabs.Main:AddButton({
-    Title = "Steal",
-    Description = "Teleports you to your own base",
-    Callback = function()
-        local player = game.Players.LocalPlayer
-        local pos
-        -- Find player's plot position
-        for _, plot in ipairs(workspace.Plots:GetChildren()) do
-            if plot:FindFirstChild("YourBase", true).Enabled then
-                local plotBlock = plot:FindFirstChild("Purchases", true) and 
-                                plot.Purchases:FindFirstChild("PlotBlock", true) and 
-                                plot.Purchases.PlotBlock:FindFirstChild("Main")
-                if plotBlock then
-                    pos = plotBlock.CFrame + Vector3.new(0, 5, 0) -- Add 5 units above the plot to avoid spawning inside
-                    break
-                end
-            end
-        end
-        
-        if not pos then
-            Fluent:Notify({ Title = "GendioHub", Content = "Could not find your base!", Duration = 2 })
-            return
-        end
-        
-        local startT = os.clock()
-        while os.clock() - startT < 1 do
-            if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-                player.Character.HumanoidRootPart.CFrame = pos
-            end
-            task.wait()
-        end
-    end
-})
-
-local SpeedSlider = Tabs.Main:AddSlider("Slider", {
-    Title = "Speed Boost",
-    Default = 0,
-    Min = 0,
-    Max = 6,
-    Rounding = 1,
-})
-
-Tabs.Main:AddParagraph({
-    Title = "Use Speed Coil/Invisibility Cloak For Higher Speed",
-})
-
-local currentSpeed = 0
-SpeedSlider:OnChanged(function(Value)
-    currentSpeed = tonumber(Value) or 0
-end)
-
-local function sSpeed(character)
-    local hum = character:WaitForChild("Humanoid")
-    local hb = game:GetService("RunService").Heartbeat
-    
-    task.spawn(function()
-        while character and hum and hum.Parent do
-            if currentSpeed > 0 and hum.MoveDirection.Magnitude > 0 then
-                character:TranslateBy(hum.MoveDirection * currentSpeed * hb:Wait() * 10)
-            end
-            task.wait()
-        end
-    end)
-end
-
-local function onCharacterAdded(character)
-    sSpeed(character)
-end
-
-player.CharacterAdded:Connect(onCharacterAdded)
-
-if player.Character then
-    onCharacterAdded(player.Character)
-end
-
-Tabs.Main:AddButton({
-    Title = "Invisible",
-    Description = "Use Invisibility Cloak",
-    Callback = function()
-        local player = game.Players.LocalPlayer
-        local character = player.Character or player.CharacterAdded:Wait()
-        local cloak = character:FindFirstChild("Invisibility Cloak")
-        if cloak and cloak:GetAttribute("SpeedModifier") == 2 then
-            cloak.Parent = workspace
+-- Сохранение конфига
+local function saveConfig()
+    local configString = ""
+    for key, value in pairs(Config) do
+        if typeof(value) == "Color3" then
+            configString = configString .. key .. "=" .. value.R .. "," .. value.G .. "," .. value.B .. ";"
         else
-            Fluent:Notify({ Title = "GendioHub", Content = "Use Invisibility Cloak First", Duration = 2 })
+            configString = configString .. key .. "=" .. tostring(value) .. ";"
         end
     end
-})
-
--- ESP
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-
-local espEnabled = false
-local espInstances = {}
-
-local function createESP(player)
-    if not espEnabled then return end
-    if player == Players.LocalPlayer then return end
-    
-    local character = player.Character
-    if not character then return end
-    
-    local humanoidRootPart = character:WaitForChild("HumanoidRootPart", 10)
-    if not humanoidRootPart then return end
-    
-    local billboard = Instance.new("BillboardGui")
-    billboard.Name = "ESP_" .. player.Name
-    billboard.AlwaysOnTop = true
-    billboard.Size = UDim2.new(0, 200, 0, 30)
-    billboard.StudsOffset = Vector3.new(0, 3, 0)
-    billboard.Adornee = humanoidRootPart
-    billboard.Parent = humanoidRootPart
-    
-    local textLabel = Instance.new("TextLabel")
-    textLabel.Name = "NameLabel"
-    textLabel.Size = UDim2.new(1, 0, 1, 0)
-    textLabel.BackgroundTransparency = 1
-    textLabel.Text = player.DisplayName
-    textLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-    textLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-    textLabel.TextStrokeTransparency = 0
-    textLabel.TextScaled = true
-    textLabel.Font = Enum.Font.GothamBold
-    textLabel.Parent = billboard
-    
-    espInstances[player] = billboard
-    
-    local function onCharacterAdded(newCharacter)
-        if billboard then billboard:Destroy() end
-        
-        humanoidRootPart = newCharacter:WaitForChild("HumanoidRootPart", 10)
-        if humanoidRootPart and espEnabled then
-            billboard.Adornee = humanoidRootPart
-            billboard.Parent = humanoidRootPart
-        end
-    end
-    
-    player.CharacterAdded:Connect(onCharacterAdded)
+    _G.SavedESPConfig = configString
+    print("Конфиг сохранен!")
 end
 
-local function removeESP(player)
-    local espInstance = espInstances[player]
-    if espInstance then
-        espInstance:Destroy()
-        espInstances[player] = nil
-    end
-end
-
-local function toggleESP(enable)
-    espEnabled = enable
-    if enable then
-        for _, player in ipairs(Players:GetPlayers()) do
-            if player ~= Players.LocalPlayer then
-                coroutine.wrap(function()
-                    createESP(player)
-                end)()
-            end
-        end
-    else
-        for player, espInstance in pairs(espInstances) do
-            if espInstance then
-                espInstance:Destroy()
-            end
-        end
-        espInstances = {}
-    end
-end
-
-local function initPlayerConnections()
-    Players.PlayerAdded:Connect(function(player)
-        player.CharacterAdded:Connect(function(character)
-            if player ~= Players.LocalPlayer and espEnabled then
-                task.wait(1)
-                createESP(player)
-            end
-        end)
-    end)
-
-    Players.PlayerRemoving:Connect(removeESP)
-end
-
-initPlayerConnections()
-
-local RaritySettings = {
-    ["Legendary"] = {
-        Color = Color3.new(1, 1, 0),
-        Size = UDim2.new(0, 150, 0, 50)
-    },
-    ["Mythic"] = {
-        Color = Color3.new(1, 0, 0),
-        Size = UDim2.new(0, 150, 0, 50)
-    },
-    ["Brainrot God"] = {
-        Color = Color3.new(0.5, 0, 0.5),
-        Size = UDim2.new(0, 180, 0, 60)
-    },
-    ["Secret"] = {
-        Color = Color3.new(0, 0, 0),
-        Size = UDim2.new(0, 200, 0, 70)
-    }
-}
-
-local MutationSettings = {
-    ["Gold"] = {
-        Color = Color3.fromRGB(255, 215, 0),
-        Size = UDim2.new(0, 120, 0, 30)
-    },
-    ["Diamond"] = {
-        Color = Color3.fromRGB(0, 191, 255),
-        Size = UDim2.new(0, 120, 0, 30)
-    },
-    ["Rainbow"] = {
-        Color = Color3.fromRGB(255, 192, 203),
-        Size = UDim2.new(0, 120, 0, 30)
-    },
-    ["Bloodrot"] = {
-        Color = Color3.fromRGB(139, 0, 0),
-        Size = UDim2.new(0, 120, 0, 30)
-    }
-}
-
-local activeESP = {}
-local activeLockTimeEsp = false
-local lteInstances = {}
-
-local function updatelock()
-    if not activeLockTimeEsp then
-        for _, instance in pairs(lteInstances) do
-            if instance then
-                instance:Destroy()
-            end
-        end
-        lteInstances = {}
-        return
-    end
-
-    for _, plot in pairs(workspace.Plots:GetChildren()) do
-        local timeLabel = plot:FindFirstChild("Purchases", true) and 
-        plot.Purchases:FindFirstChild("PlotBlock", true) and
-        plot.Purchases.PlotBlock.Main:FindFirstChild("BillboardGui", true) and
-        plot.Purchases.PlotBlock.Main.BillboardGui:FindFirstChild("RemainingTime", true)
-        
-        if timeLabel and timeLabel:IsA("TextLabel") then
-            local espName = "LockTimeESP_" .. plot.Name
-            local existingBillboard = plot:FindFirstChild(espName)
-            
-            local isUnlocked = timeLabel.Text == "0s"
-            local displayText = isUnlocked and "Unlocked" or ("Lock: " .. timeLabel.Text)
-            
-            local textColor
-            if plot.Name == plotName then
-                textColor = isUnlocked and Color3.fromRGB(0, 255, 0)
-                            or Color3.fromRGB(0, 255, 0)
-            else
-                textColor = isUnlocked and Color3.fromRGB(220, 20, 60)
-                            or Color3.fromRGB(255, 255, 0)
-            end
-            
-            if not existingBillboard then
-                local billboard = Instance.new("BillboardGui")
-                billboard.Name = espName
-                billboard.Size = UDim2.new(0, 200, 0, 30)
-                billboard.StudsOffset = Vector3.new(0, 5, 0)
-                billboard.AlwaysOnTop = true
-                billboard.Adornee = plot.Purchases.PlotBlock.Main
-                
-                local label = Instance.new("TextLabel")
-                label.Text = displayText
-                label.Size = UDim2.new(1, 0, 1, 0)
-                label.BackgroundTransparency = 1
-                label.TextScaled = true
-                label.TextColor3 = textColor
-                label.TextStrokeColor3 = Color3.new(0, 0, 0)
-                label.TextStrokeTransparency = 0
-                label.Font = Enum.Font.SourceSansBold
-                label.Parent = billboard
-                
-                billboard.Parent = plot
-                lteInstances[plot.Name] = billboard
-            else
-                existingBillboard.TextLabel.Text = displayText
-                existingBillboard.TextLabel.TextColor3 = textColor
-            end
-        end
-    end
-end
-
-local function updateRESP()
-    for _, plot in pairs(workspace.Plots:GetChildren()) do
-        if plot.Name ~= plotName then
-            for _, child in pairs(plot:GetDescendants()) do
-                if child.Name == "Rarity" and child:IsA("TextLabel") and RaritySettings[child.Text] then
-                    local parentModel = child.Parent.Parent
-                    local espName = child.Text.."_ESP"
-                    local mutationEspName = "Mutation_ESP"
-                    local existingBillboard = parentModel:FindFirstChild(espName)
-                    local existingMutationBillboard = parentModel:FindFirstChild(mutationEspName)
-                    
-                    if activeESP[child.Text] then
-                        if not existingBillboard then
-                            local settings = RaritySettings[child.Text]
-                            
-                            local billboard = Instance.new("BillboardGui")
-                            billboard.Name = espName
-                            billboard.Size = settings.Size
-                            billboard.StudsOffset = Vector3.new(0, 3, 0)
-                            billboard.AlwaysOnTop = true
-                            
-                            local label = Instance.new("TextLabel")
-                            label.Text = child.Parent.DisplayName.Text
-                            label.Size = UDim2.new(1, 0, 1, 0)
-                            label.BackgroundTransparency = 1
-                            label.TextScaled = true
-                            label.TextColor3 = settings.Color
-                            label.TextStrokeColor3 = Color3.new(0, 0, 0)
-                            label.TextStrokeTransparency = 0
-                            label.Font = Enum.Font.SourceSansBold
-                            
-                            label.Parent = billboard
-                            billboard.Parent = parentModel
-                        end
-                        
-                        local mutation = child.Parent:FindFirstChild("Mutation")
-                        if mutation and mutation:IsA("TextLabel") and MutationSettings[mutation.Text] then
-                            local mutationSettings = MutationSettings[mutation.Text]
-                            
-                            if not existingMutationBillboard then
-                                local mutationBillboard = Instance.new("BillboardGui")
-                                mutationBillboard.Name = mutationEspName
-                                mutationBillboard.Size = mutationSettings.Size
-                                mutationBillboard.StudsOffset = Vector3.new(0, 6, 0)
-                                mutationBillboard.AlwaysOnTop = true
-                                
-                                local mutationLabel = Instance.new("TextLabel")
-                                mutationLabel.Text = mutation.Text
-                                mutationLabel.Size = UDim2.new(1, 0, 1, 0)
-                                mutationLabel.BackgroundTransparency = 1
-                                mutationLabel.TextScaled = true
-                                mutationLabel.TextColor3 = mutationSettings.Color
-                                mutationLabel.TextStrokeColor3 = Color3.new(0, 0, 0)
-                                mutationLabel.TextStrokeTransparency = 0
-                                mutationLabel.Font = Enum.Font.SourceSansBold
-                                
-                                mutationLabel.Parent = mutationBillboard
-                                mutationBillboard.Parent = parentModel
-                            else
-                                existingMutationBillboard.TextLabel.Text = mutation.Text
-                                existingMutationBillboard.TextLabel.TextColor3 = mutationSettings.Color
-                            end
-                        elseif existingMutationBillboard then
-                            existingMutationBillboard:Destroy()
-                        end
-                    else
-                        if existingBillboard then
-                            existingBillboard:Destroy()
-                        end
-                        if existingMutationBillboard then
-                            existingMutationBillboard:Destroy()
-                        end
+-- Загрузка конфига
+local function loadConfig()
+    if _G.SavedESPConfig then
+        local configString = _G.SavedESPConfig
+        for pair in configString:gmatch("([^;]+)") do
+            local key, value = pair:match("([^=]+)=(.+)")
+            if key and value then
+                if key:find("Color") then
+                    local r, g, b = value:match("([^,]+),([^,]+),(.+)")
+                    if r and g and b then
+                        Config[key] = Color3.fromRGB(tonumber(r) * 255, tonumber(g) * 255, tonumber(b) * 255)
                     end
-                end
-            end
-        end
-    end
-end
-
-local MultiDropdown = Tabs.Main:AddDropdown("MultiDropdown", {
-    Title = "Esp",
-    Values = {"Lock", "Players", "Legendary", "Mythic", "Brainrot God", "Secret"},
-    Multi = true,
-    Default = {},
-})
-
-MultiDropdown:OnChanged(function(Value)
-    if Value["Players"] then
-        toggleESP(true)
-    else
-        toggleESP(false)
-    end
-    activeESP["Legendary"] = Value["Legendary"] or false
-    activeESP["Mythic"] = Value["Mythic"] or false
-    activeESP["Brainrot God"] = Value["Brainrot God"] or false
-    activeESP["Secret"] = Value["Secret"] or false
-    
-    activeLockTimeEsp = Value["Lock"] or false
-    updatelock()
-    
-    updateRESP()
-end)
-
-task.spawn(function()
-    while true do
-        task.wait(0.25)
-        if activeLockTimeEsp then
-            updatelock()
-        end
-        if next(activeESP) ~= nil then
-            updateRESP()
-        end
-    end
-end)
-
-Tabs.Main:AddKeybind("Keybind", {
-    Title = "Steal Keybind",
-    Mode = "Toggle",
-    Default = "G",
-    Callback = function(Value)
-        local player = game.Players.LocalPlayer
-        local pos
-        -- Find player's plot position
-        for _, plot in ipairs(workspace.Plots:GetChildren()) do
-            if plot:FindFirstChild("YourBase", true).Enabled then
-                local plotBlock = plot:FindFirstChild("Purchases", true) and 
-                                plot.Purchases:FindFirstChild("PlotBlock", true) and 
-                                plot.Purchases.PlotBlock:FindFirstChild("Main")
-                if plotBlock then
-                    pos = plotBlock.CFrame + Vector3.new(0, 5, 0)
-                    break
-                end
-            end
-        end
-        
-        if not pos then
-            Fluent:Notify({ Title = "GendioHub", Content = "Could not find your base!", Duration = 2 })
-            return
-        end
-        
-        local startT = os.clock()
-        while os.clock() - startT < 1 do
-            if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-                player.Character.HumanoidRootPart.CFrame = pos
-            end
-            task.wait()
-        end
-    end,
-})
-
-Tabs.Main:AddKeybind("Keybind", {
-    Title = "Shop",
-    Mode = "Toggle",
-    Default = "F",
-    Description = "Opens/Closes shop",
-    Callback = function(Value)
-        shop.Visible = Value
-        shop.Position = Value and UDim2.new(0.5, 0, 0.5, 0) or UDim2.new(0.5, 0, 1.5, 0)
-    end,
-})
-
--- SERVER
-local petModels = game:GetService("ReplicatedStorage").Models.Animals:GetChildren()
-
-local petNames = {}
-for _, pet in ipairs(petModels) do
-    table.insert(petNames, pet.Name)
-end
-
-local MultiDropdown = Tabs.Server:AddDropdown("MultiDropdown", {
-    Title = "Pet Finder",
-    Values = petNames,
-    Multi = true,
-    Default = {},
-})
-
-local function getOwner(plot)
-    local text = plot:FindFirstChild("PlotSign") and 
-    plot.PlotSign:FindFirstChild("SurfaceGui") and 
-    plot.PlotSign.SurfaceGui.Frame.TextLabel.Text or "Unknown"
-    return text:match("^(.-)'s Base") or text
-end
-
-local myPlotName
-for _, plot in ipairs(workspace.Plots:GetChildren()) do
-    if plot:FindFirstChild("YourBase", true).Enabled then
-        myPlotName = plot.Name
-        break
-    end
-end
-
-local Rparagraph = Tabs.Server:AddParagraph({
-    Title = "No pets selected",
-})
-
-local SelectedPets = {}
-local isRunning = false
-local lnt = 0
-local nc = 5
-
-MultiDropdown:OnChanged(function(SelectedPetss)
-    SelectedPets = {}
-    for petName, isSelected in pairs(SelectedPetss) do
-        if isSelected then
-            table.insert(SelectedPets, petName)
-        end
-    end
-    
-    if not isRunning and #SelectedPets > 0 then
-        isRunning = true
-        task.spawn(function()
-            local lastResults = {}
-            
-            while #SelectedPets > 0 do
-                local counts = {}
-                local found = false
-                local newPetsFound = false
-                
-                for _, plot in pairs(workspace.Plots:GetChildren()) do
-                    if plot.Name ~= myPlotName then
-                        local owner = getOwner(plot)
-                        for _, v in pairs(plot:GetDescendants()) do
-                            if v.Name == "DisplayName" and table.find(SelectedPets, v.Text) then
-                                counts[owner] = counts[owner] or {}
-                                counts[owner][v.Text] = (counts[owner][v.Text] or 0) + 1
-                                found = true
-                                
-                                if not lastResults[owner] or not lastResults[owner][v.Text] then
-                                    newPetsFound = true
-                                end
-                            end
-                        end
-                    end
-                end
-                
-                if found then
-                    local resultText = ""
-                    for owner, pets in pairs(counts) do
-                        for name, count in pairs(pets) do
-                            resultText = resultText .. name.." x"..count.." | Owner: "..owner.."\n"
-                            
-                            if newPetsFound and (os.time() - lnt) > nc then
-                                Fluent:Notify({
-                                    Title = "Pet Finder",
-                                    Content = "Found "..name.." x"..count.." Owner: "..owner,
-                                    Duration = 2
-                                })
-                                lnt = os.time()
-                            end
-                        end
-                    end
-                    Rparagraph:SetTitle(resultText)
+                elseif value == "true" or value == "false" then
+                    Config[key] = value == "true"
+                elseif tonumber(value) then
+                    Config[key] = tonumber(value)
                 else
-                    Rparagraph:SetTitle("No selected pets found")
+                    Config[key] = value
                 end
-                
-                lastResults = counts
-                task.wait(0.5)
+            end
+        end
+        print("Конфиг загружен!")
+    end
+end
+
+-- Создание GUI
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "ESPConfigGUI"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.Parent = PlayerGui
+
+-- МОБИЛЬНАЯ КНОПКА G (кружочек)
+local MobileButton = Instance.new("TextButton")
+MobileButton.Name = "MobileButton"
+MobileButton.Size = UDim2.new(0, 80, 0, 80)
+MobileButton.Position = UDim2.new(0, 20, 0, 100)
+MobileButton.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
+MobileButton.Text = "G"
+MobileButton.TextColor3 = Color3.new(1, 1, 1)
+MobileButton.TextScaled = true
+MobileButton.Font = Enum.Font.GothamBold
+MobileButton.Active = true
+MobileButton.Draggable = true
+MobileButton.Parent = ScreenGui
+
+-- Делаем кнопку круглой
+local ButtonCorner = Instance.new("UICorner")
+ButtonCorner.CornerRadius = UDim.new(0.5, 0)
+ButtonCorner.Parent = MobileButton
+
+-- Тень для кнопки
+local ButtonShadow = Instance.new("Frame")
+ButtonShadow.Name = "Shadow"
+ButtonShadow.Size = UDim2.new(1, 6, 1, 6)
+ButtonShadow.Position = UDim2.new(0, -3, 0, -3)
+ButtonShadow.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+ButtonShadow.BackgroundTransparency = 0.5
+ButtonShadow.ZIndex = MobileButton.ZIndex - 1
+ButtonShadow.Parent = MobileButton
+
+local ShadowCorner = Instance.new("UICorner")
+ShadowCorner.CornerRadius = UDim.new(0.5, 0)
+ShadowCorner.Parent = ButtonShadow
+
+-- Главное окно
+local MainFrame = Instance.new("Frame")
+MainFrame.Name = "MainFrame"
+MainFrame.Size = isMobile and UDim2.new(0.9, 0, 0.8, 0) or UDim2.new(0, 400, 0, 500)
+MainFrame.Position = isMobile and UDim2.new(0.05, 0, 0.1, 0) or UDim2.new(0.5, -200, 0.5, -250)
+MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+MainFrame.BorderSizePixel = 0
+MainFrame.Active = true
+MainFrame.Draggable = not isMobile
+MainFrame.Visible = false
+MainFrame.Parent = ScreenGui
+
+-- Скругление углов
+local Corner = Instance.new("UICorner")
+Corner.CornerRadius = UDim.new(0, 15)
+Corner.Parent = MainFrame
+
+-- Заголовок
+local Title = Instance.new("TextLabel")
+Title.Name = "Title"
+Title.Size = UDim2.new(1, 0, 0, isMobile and 60 or 40)
+Title.Position = UDim2.new(0, 0, 0, 0)
+Title.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+Title.Text = "ESP CONFIG"
+Title.TextColor3 = Color3.new(1, 1, 1)
+Title.TextScaled = true
+Title.Font = Enum.Font.GothamBold
+Title.Parent = MainFrame
+
+local TitleCorner = Instance.new("UICorner")
+TitleCorner.CornerRadius = UDim.new(0, 15)
+TitleCorner.Parent = Title
+
+-- Кнопка закрытия
+local CloseButton = Instance.new("TextButton")
+CloseButton.Name = "CloseButton"
+CloseButton.Size = UDim2.new(0, isMobile and 50 or 30, 0, isMobile and 50 or 30)
+CloseButton.Position = UDim2.new(1, isMobile and -60 or -35, 0, isMobile and 5 or 5)
+CloseButton.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+CloseButton.Text = "✕"
+CloseButton.TextColor3 = Color3.new(1, 1, 1)
+CloseButton.TextScaled = true
+CloseButton.Font = Enum.Font.GothamBold
+CloseButton.Parent = Title
+
+local CloseCorner = Instance.new("UICorner")
+CloseCorner.CornerRadius = UDim.new(0, 8)
+CloseCorner.Parent = CloseButton
+
+-- Скролл контейнер
+local ScrollFrame = Instance.new("ScrollingFrame")
+ScrollFrame.Name = "ScrollFrame"
+ScrollFrame.Size = UDim2.new(1, -20, 1, isMobile and -120 or -90)
+ScrollFrame.Position = UDim2.new(0, 10, 0, isMobile and 70 or 50)
+ScrollFrame.BackgroundTransparency = 1
+ScrollFrame.ScrollBarThickness = isMobile and 15 or 8
+ScrollFrame.CanvasSize = UDim2.new(0, 0, 0, 1000)
+ScrollFrame.Parent = MainFrame
+
+local Layout = Instance.new("UIListLayout")
+Layout.Padding = UDim.new(0, isMobile and 15 or 10)
+Layout.Parent = ScrollFrame
+
+-- Функция создания чекбокса (адаптивный для мобилки)
+local function createCheckbox(name, configKey)
+    local Frame = Instance.new("Frame")
+    Frame.Name = name .. "Frame"
+    Frame.Size = UDim2.new(1, -20, 0, isMobile and 60 or 40)
+    Frame.BackgroundTransparency = 1
+    Frame.Parent = ScrollFrame
+    
+    local Label = Instance.new("TextLabel")
+    Label.Size = UDim2.new(0.65, 0, 1, 0)
+    Label.Position = UDim2.new(0, 0, 0, 0)
+    Label.BackgroundTransparency = 1
+    Label.Text = name
+    Label.TextColor3 = Color3.new(1, 1, 1)
+    Label.TextScaled = true
+    Label.Font = Enum.Font.Gotham
+    Label.TextXAlignment = Enum.TextXAlignment.Left
+    Label.Parent = Frame
+    
+    local Checkbox = Instance.new("TextButton")
+    Checkbox.Size = UDim2.new(0, isMobile and 80 or 60, 0, isMobile and 45 or 30)
+    Checkbox.Position = UDim2.new(1, isMobile and -90 or -70, 0.5, isMobile and -22.5 or -15)
+    Checkbox.BackgroundColor3 = Config[configKey] and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(255, 0, 0)
+    Checkbox.Text = Config[configKey] and "ON" or "OFF"
+    Checkbox.TextColor3 = Color3.new(1, 1, 1)
+    Checkbox.TextScaled = true
+    Checkbox.Font = Enum.Font.GothamBold
+    Checkbox.Parent = Frame
+    
+    local CheckCorner = Instance.new("UICorner")
+    CheckCorner.CornerRadius = UDim.new(0, 8)
+    CheckCorner.Parent = Checkbox
+    
+    Checkbox.MouseButton1Click:Connect(function()
+        Config[configKey] = not Config[configKey]
+        Checkbox.BackgroundColor3 = Config[configKey] and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(255, 0, 0)
+        Checkbox.Text = Config[configKey] and "ON" or "OFF"
+        
+        -- Анимация нажатия
+        TweenService:Create(Checkbox, TweenInfo.new(0.1), {Size = UDim2.new(0, isMobile and 75 or 55, 0, isMobile and 40 or 25)}):Play()
+        wait(0.1)
+        TweenService:Create(Checkbox, TweenInfo.new(0.1), {Size = UDim2.new(0, isMobile and 80 or 60, 0, isMobile and 45 or 30)}):Play()
+    end)
+end
+
+-- Функция создания слайдера (адаптивный для мобилки)
+local function createSlider(name, configKey, minVal, maxVal)
+    local Frame = Instance.new("Frame")
+    Frame.Name = name .. "Frame"
+    Frame.Size = UDim2.new(1, -20, 0, isMobile and 80 : 60)
+    Frame.BackgroundTransparency = 1
+    Frame.Parent = ScrollFrame
+    
+    local Label = Instance.new("TextLabel")
+    Label.Size = UDim2.new(1, 0, 0, isMobile and 35 or 25)
+    Label.Position = UDim2.new(0, 0, 0, 0)
+    Label.BackgroundTransparency = 1
+    Label.Text = name .. ": " .. Config[configKey]
+    Label.TextColor3 = Color3.new(1, 1, 1)
+    Label.TextScaled = true
+    Label.Font = Enum.Font.Gotham
+    Label.TextXAlignment = Enum.TextXAlignment.Left
+    Label.Parent = Frame
+    
+    local SliderBack = Instance.new("Frame")
+    SliderBack.Size = UDim2.new(1, 0, 0, isMobile and 30 or 20)
+    SliderBack.Position = UDim2.new(0, 0, 0, isMobile and 40 or 30)
+    SliderBack.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+    SliderBack.Parent = Frame
+    
+    local SliderCorner = Instance.new("UICorner")
+    SliderCorner.CornerRadius = UDim.new(0, 15)
+    SliderCorner.Parent = SliderBack
+    
+    local SliderFill = Instance.new("Frame")
+    SliderFill.Size = UDim2.new((Config[configKey] - minVal) / (maxVal - minVal), 0, 1, 0)
+    SliderFill.Position = UDim2.new(0, 0, 0, 0)
+    SliderFill.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
+    SliderFill.Parent = SliderBack
+    
+    local FillCorner = Instance.new("UICorner")
+    FillCorner.CornerRadius = UDim.new(0, 15)
+    FillCorner.Parent = SliderFill
+    
+    -- Ползунок для мобилки
+    local SliderHandle = Instance.new("Frame")
+    SliderHandle.Size = UDim2.new(0, isMobile and 25 or 15, 1, isMobile and 10 or 5)
+    SliderHandle.Position = UDim2.new((Config[configKey] - minVal) / (maxVal - minVal), isMobile and -12.5 or -7.5, 0, isMobile and -5 or -2.5)
+    SliderHandle.BackgroundColor3 = Color3.new(1, 1, 1)
+    SliderHandle.Parent = SliderBack
+    
+    local HandleCorner = Instance.new("UICorner")
+    HandleCorner.CornerRadius = UDim.new(0.5, 0)
+    HandleCorner.Parent = SliderHandle
+    
+    local dragging = false
+    
+    local function updateSlider(input)
+        if dragging then
+            local relative = math.clamp((input.Position.X - SliderBack.AbsolutePosition.X) / SliderBack.AbsoluteSize.X, 0, 1)
+            
+            Config[configKey] = minVal + (maxVal - minVal) * relative
+            if configKey == "HeadSize" then
+                Config[configKey] = math.floor(Config[configKey])
             end
             
-            isRunning = false
-            Rparagraph:SetTitle("No pets selected")
-        end)
-    elseif #SelectedPets == 0 then
-        Rparagraph:SetTitle("No pets selected")
+            SliderFill.Size = UDim2.new(relative, 0, 1, 0)
+            SliderHandle.Position = UDim2.new(relative, isMobile and -12.5 or -7.5, 0, isMobile and -5 or -2.5)
+            Label.Text = name .. ": " .. Config[configKey]
+        end
     end
+    
+    SliderBack.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            updateSlider(input)
+        end
+    end)
+    
+    UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = false
+        end
+    end)
+    
+    UserInputService.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+            updateSlider(input)
+        end
+    end)
+end
+
+-- Создание элементов интерфейса
+createCheckbox("ESP Включен", "ESPEnabled")
+createCheckbox("ESP Игроков", "PlayerESP")
+createCheckbox("ESP Мобов", "MobESP")
+createCheckbox("Подсветка", "HighlightEnabled")
+
+createSlider("Размер головы", "HeadSize", 1, 50)
+createSlider("Прозрачность", "Transparency", 0, 1)
+createSlider("Прозрачность подсветки", "FillTransparency", 0, 1)
+
+-- Кнопки сохранения и загрузки
+local ButtonFrame = Instance.new("Frame")
+ButtonFrame.Name = "ButtonFrame"
+ButtonFrame.Size = UDim2.new(1, -20, 0, isMobile and 60 or 40)
+ButtonFrame.BackgroundTransparency = 1
+ButtonFrame.Parent = ScrollFrame
+
+local SaveButton = Instance.new("TextButton")
+SaveButton.Size = UDim2.new(0.45, 0, 1, 0)
+SaveButton.Position = UDim2.new(0, 0, 0, 0)
+SaveButton.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
+SaveButton.Text = "СОХРАНИТЬ"
+SaveButton.TextColor3 = Color3.new(1, 1, 1)
+SaveButton.TextScaled = true
+SaveButton.Font = Enum.Font.GothamBold
+SaveButton.Parent = ButtonFrame
+
+local SaveCorner = Instance.new("UICorner")
+SaveCorner.CornerRadius = UDim.new(0, 10)
+SaveCorner.Parent = SaveButton
+
+local LoadButton = Instance.new("TextButton")
+LoadButton.Size = UDim2.new(0.45, 0, 1, 0)
+LoadButton.Position = UDim2.new(0.55, 0, 0, 0)
+LoadButton.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
+LoadButton.Text = "ЗАГРУЗИТЬ"
+LoadButton.TextColor3 = Color3.new(1, 1, 1)
+LoadButton.TextScaled = true
+LoadButton.Font = Enum.Font.GothamBold
+LoadButton.Parent = ButtonFrame
+
+local LoadCorner = Instance.new("UICorner")
+LoadCorner.CornerRadius = UDim.new(0, 10)
+LoadCorner.Parent = LoadButton
+
+-- Анимация открытия/закрытия
+local function toggleMenu()
+    local isVisible = MainFrame.Visible
+    
+    if not isVisible then
+        MainFrame.Visible = true
+        MainFrame.Size = isMobile and UDim2.new(0, 0, 0, 0) or UDim2.new(0, 0, 0, 0)
+        MainFrame.Position = isMobile and UDim2.new(0.5, 0, 0.5, 0) or UDim2.new(0.5, 0, 0.5, 0)
+        
+        TweenService:Create(MainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Back), {
+            Size = isMobile and UDim2.new(0.9, 0, 0.8, 0) or UDim2.new(0, 400, 0, 500),
+            Position = isMobile and UDim2.new(0.05, 0, 0.1, 0) or UDim2.new(0.5, -200, 0.5, -250)
+        }):Play()
+        
+        -- Анимация кнопки
+        TweenService:Create(MobileButton, TweenInfo.new(0.2), {Rotation = 45}):Play()
+    else
+        TweenService:Create(MainFrame, TweenInfo.new(0.2, Enum.EasingStyle.Back), {
+            Size = UDim2.new(0, 0, 0, 0),
+            Position = isMobile and UDim2.new(0.5, 0, 0.5, 0) or UDim2.new(0.5, 0, 0.5, 0)
+        }):Play()
+        
+        wait(0.2)
+        MainFrame.Visible = false
+        
+        -- Анимация кнопки
+        TweenService:Create(MobileButton, TweenInfo.new(0.2), {Rotation = 0}):Play()
+    end
+end
+
+-- События кнопок
+SaveButton.MouseButton1Click:Connect(function()
+    saveConfig()
+    -- Эффект нажатия
+    TweenService:Create(SaveButton, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(0, 200, 0)}):Play()
+    wait(0.1)
+    TweenService:Create(SaveButton, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(0, 255, 0)}):Play()
 end)
 
-Tabs.Server:AddSection("Other")
+LoadButton.MouseButton1Click:Connect(function()
+    loadConfig()
+    -- Эффект нажатия
+    TweenService:Create(LoadButton, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(0, 140, 200)}):Play()
+    wait(0.1)
+    TweenService:Create(LoadButton, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(0, 170, 255)}):Play()
+end)
 
-Tabs.Server:AddButton({
-    Title = "Server Hop",
-    Description = "Joins a Different Server",
-    Callback = function()
-        local PlaceID = game.PlaceId
-        local AllIDs = {}
-        local foundAnything = ""
-        local actualHour = os.date("!*t").hour
-        local Deleted = false
-        local File = pcall(function()
-            AllIDs = game:GetService('HttpService'):JSONDecode(readfile("NotSameServers.json"))
-        end)
-        if not File then
-            table.insert(AllIDs, actualHour)
-            writefile("NotSameServers.json", game:GetService('HttpService'):JSONEncode(AllIDs))
+CloseButton.MouseButton1Click:Connect(toggleMenu)
+MobileButton.MouseButton1Click:Connect(toggleMenu)
+
+-- Управление с клавиатуры (для ПК)
+if not isMobile then
+    UserInputService.InputBegan:Connect(function(key)
+        if key.KeyCode == Enum.KeyCode.RightControl then
+            toggleMenu()
         end
-        function TPReturner()
-            local Site;
-            if foundAnything == "" then
-                Site = game.HttpService:JSONDecode(game:HttpGet('https://games.roblox.com/v1/games/' .. PlaceID .. '/servers/Public?sortOrder=Asc&limit=100'))
-            else
-                Site = game.HttpService:JSONDecode(game:HttpGet('https://games.roblox.com/v1/games/' .. PlaceID .. '/servers/Public?sortOrder=Asc&limit=100&cursor=' .. foundAnything))
-            end
-            local ID = ""
-            if Site.nextPageCursor and Site.nextPageCursor ~= "null" and Site.nextPageCursor ~= nil then
-                foundAnything = Site.nextPageCursor
-            end
-            local num = 0;
-            for _,v in pairs(Site.data) do
-                local Possible = true
-                ID = tostring(v.id)
-                if tonumber(v.maxPlayers) > tonumber(v.playing) then
-                    for _,Existing in pairs(AllIDs) do
-                        if num ~= 0 then
-                            if ID == tostring(Existing) then
-                                Possible = false
-                            end
-                        else
-                            if tonumber(actualHour) ~= tonumber(Existing) then
-                                local delFile = pcall(function()
-                                    delfile("NotSameServers.json")
-                                    AllIDs = {}
-                                    table.insert(AllIDs, actualHour)
-                                end)
-                            end
-                        end
-                        num = num + 1
-                    end
-                    if Possible == true then
-                        table.insert(AllIDs, ID)
-                        task.wait()
-                        pcall(function()
-                            writefile("NotSameServers.json", game:GetService('HttpService'):JSONEncode(AllIDs))
-                            task.wait()
-                            game:GetService("TeleportService"):TeleportToPlaceInstance(PlaceID, ID, game.Players.LocalPlayer)
-                        end)
-                        task.wait(4)
-                    end
+    end)
+end
+
+-- ESP функции из оригинального скрипта
+local MobsFolder = workspace:FindFirstChild("Mobs")
+
+local function applyPropertiesToPart(part)
+    if part then
+        part.Size = Vector3.new(Config.HeadSize, Config.HeadSize, Config.HeadSize)
+        part.Transparency = Config.Transparency
+        part.BrickColor = BrickColor.new("Really blue")
+        part.Material = Enum.Material[Config.PartMaterial]
+        part.CanCollide = false
+    end
+end
+
+local function applyHighlight(model, color)
+    if not Config.HighlightEnabled then return end
+    
+    if not model:FindFirstChild("HighlightESP") then
+        local highlight = Instance.new("Highlight")
+        highlight.Name = "HighlightESP"
+        highlight.FillColor = color
+        highlight.OutlineColor = Color3.new(0, 0, 0)
+        highlight.FillTransparency = Config.FillTransparency
+        highlight.OutlineTransparency = 0
+        highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+        highlight.Parent = model
+        highlight.Adornee = model
+    end
+end
+
+-- Основной цикл ESP
+RunService.RenderStepped:Connect(function()
+    if Config.ESPEnabled then
+        if Config.PlayerESP then
+            for _, player in ipairs(Players:GetPlayers()) do
+                if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                    pcall(function()
+                        applyPropertiesToPart(player.Character.HumanoidRootPart)
+                        applyHighlight(player.Character, Config.PlayerColor)
+                    end)
                 end
             end
         end
-        function Teleport()
-            while task.wait() do
-                pcall(function()
-                    TPReturner()
-                    if foundAnything ~= "" then
-                        TPReturner()
-                    end
-                end)
+
+        if Config.MobESP and MobsFolder then
+            for _, mob in ipairs(MobsFolder:GetChildren()) do
+                if mob:IsA("Model") and mob:FindFirstChild("HumanoidRootPart") then
+                    pcall(function()
+                        applyPropertiesToPart(mob.HumanoidRootPart)
+                        applyHighlight(mob, Config.MobColor)
+                    end)
+                end
             end
         end
-        Teleport()
-    end
-})
-
-Tabs.Server:AddButton({
-    Title = "Rejoin",
-    Description = "Rejoins The Same Server",
-    Callback = function()
-        local ts = game:GetService("TeleportService")
-        local p = game:GetService("Players").LocalPlayer
-        ts:TeleportToPlaceInstance(game.PlaceId, game.JobId, p)
-    end
-})
-
-local Timer = Tabs.Updates:AddParagraph({ Title = "Time: 00:00:00" })
-local st = os.time()
-
-task.spawn(function()
-    while true do
-        local et = os.difftime(os.time(), st)
-        Timer:SetTitle(string.format("Time: %02d:%02d:%02d", math.floor(et / 3600), math.floor((et % 3600) / 60), et % 60))
-        task.wait(1)
     end
 end)
 
-Tabs.Updates:AddButton({
-    Title = "Discord Server",
-    Description = "Copies Discord Invite Link",
-    Callback = function()
-        setclipboard("https://discord.gg/hBTDRZrf")
-        Fluent:Notify({ Title = "GendioHub", Content = "Copied Successfully", Duration = 2 })
-    end
-})
+-- Загрузка конфига при запуске
+loadConfig()
 
-Tabs.Updates:AddButton({
-    Title = "Run Infinite Yield",
-    Callback = function()
-        loadstring(game:HttpGet('https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source'))()
-    end
-})
-
-game:GetService('Players').LocalPlayer.Idled:Connect(function()
-    game:GetService('VirtualUser'):CaptureController()
-    game:GetService('VirtualUser'):ClickButton2(Vector2.new())
-end)
-
-loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/InterfaceManager.lua"))()
-
-SaveManager:SetLibrary(Fluent)
-SaveManager:BuildConfigSection(Tabs.Settings)
-SaveManager:LoadAutoloadConfig()
-
-Window:SelectTab(1)
+if isMobile then
+    print("ESP GUI загружен для мобилки! Нажми кнопку G для открытия меню")
+else
+    print("ESP GUI загружен! Нажми Right Ctrl или кнопку G для открытия")
+end
