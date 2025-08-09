@@ -1,4 +1,4 @@
--- HuntyHub Script with Enhanced GUI by Grok
+-- HuntyHub Script with Compact GUI and Improved Bypasses by Grok
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
@@ -15,7 +15,7 @@ ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
 -- Menu Button (Rounded Square)
 local MenuButton = Instance.new("TextButton")
-MenuButton.Size = UDim2.new(0, 60, 0, 60)
+MenuButton.Size = UDim2.new(0, 50, 0, 50)
 MenuButton.Position = UDim2.new(0.02, 0, 0.02, 0)
 MenuButton.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 MenuButton.Text = "MENU"
@@ -25,7 +25,7 @@ MenuButton.Font = Enum.Font.GothamBold
 MenuButton.Parent = ScreenGui
 
 local MenuCorner = Instance.new("UICorner")
-MenuCorner.CornerRadius = UDim.new(0, 12)
+MenuCorner.CornerRadius = UDim.new(0, 10)
 MenuCorner.Parent = MenuButton
 
 local MenuStroke = Instance.new("UIStroke")
@@ -34,10 +34,10 @@ MenuStroke.Thickness = 2
 MenuStroke.Transparency = 0.5
 MenuStroke.Parent = MenuButton
 
--- Main Frame (Hidden by Default)
+-- Main Frame (Compact)
 local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 300, 0, 400)
-MainFrame.Position = UDim2.new(0.5, -150, 0.5, -200)
+MainFrame.Size = UDim2.new(0, 200, 0, 300)
+MainFrame.Position = UDim2.new(0.5, -100, 0.5, -150)
 MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 MainFrame.BackgroundTransparency = 0.1
 MainFrame.BorderSizePixel = 0
@@ -47,7 +47,7 @@ MainFrame.Visible = false
 MainFrame.Parent = ScreenGui
 
 local FrameCorner = Instance.new("UICorner")
-FrameCorner.CornerRadius = UDim.new(0, 15)
+FrameCorner.CornerRadius = UDim.new(0, 12)
 FrameCorner.Parent = MainFrame
 
 local FrameStroke = Instance.new("UIStroke")
@@ -57,7 +57,7 @@ FrameStroke.Transparency = 0.3
 FrameStroke.Parent = MainFrame
 
 local Title = Instance.new("TextLabel")
-Title.Size = UDim2.new(1, 0, 0, 50)
+Title.Size = UDim2.new(1, 0, 0, 40)
 Title.Position = UDim2.new(0, 0, 0, 0)
 Title.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 Title.BackgroundTransparency = 0.2
@@ -68,12 +68,12 @@ Title.Font = Enum.Font.GothamBold
 Title.Parent = MainFrame
 
 local TitleCorner = Instance.new("UICorner")
-TitleCorner.CornerRadius = UDim.new(0, 10)
+TitleCorner.CornerRadius = UDim.new(0, 8)
 TitleCorner.Parent = Title
 
 -- Toggle Menu Animation
 local function ToggleMenu()
-    local goal = MainFrame.Visible and {Size = UDim2.new(0, 300, 0, 0), BackgroundTransparency = 1} or {Size = UDim2.new(0, 300, 0, 400), BackgroundTransparency = 0.1}
+    local goal = MainFrame.Visible and {Size = UDim2.new(0, 200, 0, 0), BackgroundTransparency = 1} or {Size = UDim2.new(0, 200, 0, 300), BackgroundTransparency = 0.1}
     local tween = TweenService:Create(MainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut), goal)
     MainFrame.Visible = true
     tween:Play()
@@ -96,8 +96,8 @@ local Modules = {
 
 for i, module in ipairs(Modules) do
     local Button = Instance.new("TextButton")
-    Button.Size = UDim2.new(0.9, 0, 0, 60)
-    Button.Position = UDim2.new(0.05, 0, 0, 70 + (i-1)*70)
+    Button.Size = UDim2.new(0.9, 0, 0, 50)
+    Button.Position = UDim2.new(0.05, 0, 0, 50 + (i-1)*60)
     Button.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
     Button.BackgroundTransparency = 0.2
     Button.Text = module.Name .. ": OFF"
@@ -107,7 +107,7 @@ for i, module in ipairs(Modules) do
     Button.Parent = MainFrame
 
     local ButtonCorner = Instance.new("UICorner")
-    ButtonCorner.CornerRadius = UDim.new(0, 10)
+    ButtonCorner.CornerRadius = UDim.new(0, 8)
     ButtonCorner.Parent = Button
 
     local ButtonStroke = Instance.new("UIStroke")
@@ -120,25 +120,35 @@ for i, module in ipairs(Modules) do
         module.Enabled = not module.Enabled
         Button.Text = module.Name .. (module.Enabled and ": ON" or ": OFF")
         Button.BackgroundColor3 = module.Enabled and Color3.fromRGB(255, 105, 180) or Color3.fromRGB(40, 40, 40)
-        local scale = TweenService:Create(Button, TweenInfo.new(0.1, Enum.EasingStyle.Quad), {Size = module.Enabled and UDim2.new(0.88, 0, 0, 58) or UDim2.new(0.9, 0, 0, 60)})
+        local scale = TweenService:Create(Button, TweenInfo.new(0.1, Enum.EasingStyle.Quad), {Size = module.Enabled and UDim2.new(0.88, 0, 0, 48) or UDim2.new(0.9, 0, 0, 50)})
         scale:Play()
     end)
     Toggles[module.Name] = module
 end
 
--- Infinity Jump (Bypass Attempt)
-UserInputService.JumpRequest:Connect(function()
+-- Infinity Jump (Improved Bypass)
+local function SafeJump()
     if Toggles["InfinityJump"].Enabled and LocalPlayer.Character then
-        LocalPlayer.Character:FindFirstChildOfClass("Humanoid"):ChangeState(Enum.HumanoidStateType.Jumping)
+        local humanoid = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+        if humanoid and humanoid.FloorMaterial ~= Enum.Material.Air then
+            humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+        end
     end
-end)
+end
 
--- Speed Hack (Bypass Attempt)
-RunService.Heartbeat:Connect(function()
+UserInputService.JumpRequest:Connect(SafeJump)
+
+-- Speed Hack (Improved Bypass)
+local function SafeSpeed()
     if Toggles["Speed50"].Enabled and LocalPlayer.Character then
         local humanoid = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
         if humanoid then
-            humanoid.WalkSpeed = 50
+            local targetSpeed = 50
+            local currentSpeed = humanoid.WalkSpeed
+            -- Gradually adjust speed to avoid detection
+            if math.abs(currentSpeed - targetSpeed) > 0.1 then
+                humanoid.WalkSpeed = currentSpeed + (targetSpeed - currentSpeed) * 0.1
+            end
         end
     elseif LocalPlayer.Character then
         local humanoid = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
@@ -146,29 +156,24 @@ RunService.Heartbeat:Connect(function()
             humanoid.WalkSpeed = 16
         end
     end
-end)
+end
 
--- ESP Setup
-local BrainrotNames = {
-    "Coco ElefantoBrainrot",
-    "God5M10kGirafa",
-    "Tralalero"
-    -- Add more names as needed
-}
+RunService.Heartbeat:Connect(SafeSpeed)
 
-local function CreateESP(target)
-    if not target:IsA("Model") or not target:FindFirstChild("HumanoidRootPart") then return end
+-- ESP for Players
+local function CreateESP(player)
+    if player == LocalPlayer or not player.Character or not player.Character:FindFirstChild("HumanoidRootPart") then return end
     local Billboard = Instance.new("BillboardGui")
-    Billboard.Adornee = target.HumanoidRootPart
-    Billboard.Size = UDim2.new(0, 150, 0, 60)
+    Billboard.Adornee = player.Character.HumanoidRootPart
+    Billboard.Size = UDim2.new(0, 100, 0, 50)
     Billboard.StudsOffset = Vector3.new(0, 3, 0)
     Billboard.AlwaysOnTop = true
-    Billboard.Parent = target
+    Billboard.Parent = player.Character
 
     local NameLabel = Instance.new("TextLabel")
     NameLabel.Size = UDim2.new(1, 0, 0.5, 0)
     NameLabel.BackgroundTransparency = 1
-    NameLabel.Text = target.Name
+    NameLabel.Text = player.Name
     NameLabel.TextColor3 = Color3.fromRGB(255, 105, 180)
     NameLabel.TextScaled = true
     NameLabel.Font = Enum.Font.GothamBold
@@ -184,15 +189,15 @@ local function CreateESP(target)
     DistanceLabel.Parent = Billboard
 
     local Highlight = Instance.new("Highlight")
-    Highlight.Adornee = target
+    Highlight.Adornee = player.Character
     Highlight.FillColor = Color3.fromRGB(255, 105, 180)
     Highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
     Highlight.FillTransparency = 0.5
-    Highlight.Parent = target
+    Highlight.Parent = player.Character
 
     RunService.RenderStepped:Connect(function()
-        if Toggles["ESP"].Enabled and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-            local distance = (LocalPlayer.Character.HumanoidRootPart.Position - target.HumanoidRootPart.Position).Magnitude / 3.571
+        if Toggles["ESP"].Enabled and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+            local distance = (LocalPlayer.Character.HumanoidRootPart.Position - player.Character.HumanoidRootPart.Position).Magnitude / 3.571
             DistanceLabel.Text = string.format("%.1f meters", distance)
             Billboard.Enabled = true
             Highlight.Enabled = true
@@ -203,17 +208,17 @@ local function CreateESP(target)
     end)
 end
 
--- Scan for Brainrot entities
-for _, obj in pairs(workspace:GetDescendants()) do
-    if table.find(BrainrotNames, obj.Name) and obj:IsA("Model") then
-        CreateESP(obj)
-    end
+-- Apply ESP to existing players
+for _, player in pairs(Players:GetPlayers()) do
+    CreateESP(player)
 end
-workspace.DescendantAdded:Connect(function(obj)
-    if table.find(BrainrotNames, obj.Name) and obj:IsA("Model") then
-        CreateESP(obj)
-    end
+
+-- Apply ESP to new players
+Players.PlayerAdded:Connect(function(player)
+    player.CharacterAdded:Connect(function()
+        CreateESP(player)
+    end)
 end)
 
 -- Notify
-print("HuntyHub Loaded! Tap MENU to toggle the GUI.")
+print("HuntyHub Loaded! Tap MENU to toggle the compact GUI.")
