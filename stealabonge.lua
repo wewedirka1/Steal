@@ -1,4 +1,3 @@
-local UserInputService = game:GetService("UserInputService")
 local Players = game:GetService("Players")
 local StarterGui = game:GetService("StarterGui")
 
@@ -7,23 +6,27 @@ local player = Players.LocalPlayer
 local character = player.Character or player.CharacterAdded:Wait()
 local humanoid = character:WaitForChild("Humanoid")
 
--- Создаем GUI
+-- Создаем GUI, оптимизированное для мобильных устройств
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "GodModeGui"
 screenGui.Parent = StarterGui
+screenGui.ResetOnSpawn = false -- GUI не сбрасывается при респауне
 
 local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 200, 0, 100)
-frame.Position = UDim2.new(0.5, -100, 0.5, -50)
+frame.Size = UDim2.new(0, 150, 0, 80) -- Большой размер для удобства на телефоне
+frame.Position = UDim2.new(0.5, -75, 0.8, -40) -- Внизу экрана для удобного нажатия
 frame.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+frame.BorderSizePixel = 2
 frame.Parent = screenGui
 
 local toggleButton = Instance.new("TextButton")
-toggleButton.Size = UDim2.new(0, 100, 0, 50)
-toggleButton.Position = UDim2.new(0.5, -50, 0.5, -25)
+toggleButton.Size = UDim2.new(1, -10, 1, -10) -- Заполняет рамку с небольшим отступом
+toggleButton.Position = UDim2.new(0, 5, 0, 5)
 toggleButton.Text = "God Mode: OFF"
 toggleButton.BackgroundColor3 = Color3.fromRGB(100, 100, 255)
 toggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+toggleButton.TextScaled = true -- Текст адаптируется к размеру кнопки
+toggleButton.Font = Enum.Font.SourceSansBold
 toggleButton.Parent = frame
 
 -- Переменная для отслеживания режима неуязвимости
@@ -33,9 +36,10 @@ local godMode = false
 local function toggleGodMode()
     godMode = not godMode
     toggleButton.Text = godMode and "God Mode: ON" or "God Mode: OFF"
+    toggleButton.BackgroundColor3 = godMode and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(100, 100, 255)
     
     if godMode then
-        -- Устанавливаем максимальное здоровье и предотвращаем урон
+        -- Устанавливаем бесконечное здоровье
         humanoid.MaxHealth = math.huge
         humanoid.Health = math.huge
     else
@@ -52,15 +56,8 @@ humanoid.HealthChanged:Connect(function(health)
     end
 end)
 
--- Обработка нажатия клавиши F1
-UserInputService.InputBegan:Connect(function(input, gameProcessedEvent)
-    if not gameProcessedEvent and input.KeyCode == Enum.KeyCode.F1 then
-        toggleGodMode()
-    end
-end)
-
 -- Обработка нажатия кнопки
-toggleButton.MouseButton1Click:Connect(toggleGodMode)
+toggleButton.Activated:Connect(toggleGodMode) -- Используем Activated для совместимости с сенсорными экранами
 
 -- Обновление персонажа при респауне
 player.CharacterAdded:Connect(function(newCharacter)
