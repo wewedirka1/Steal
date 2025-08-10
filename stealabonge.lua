@@ -1,9 +1,8 @@
--- Roblox Cheat Script: Aimbot with FOV Circle, Silent Aim, ESP, and Neverlose-like GUI
+-- Roblox Cheat Script: Aimbot with FOV Circle, Silent Aim, ESP, and Neverlose-like GUI with Black Background
 -- Opens on 'M' key
 -- Note: This script assumes you're using an exploit that supports Drawing API and UserInputService.
 -- For Silent Aim, it hooks raycasting (works in games using workspace:FindPartOnRay).
--- Customize for specific games if needed.
--- GUI uses a simple custom menu inspired by Neverlose style (tabs, toggles, sliders). Not using external libs for self-containment.
+-- GUI uses a black-themed custom menu inspired by Neverlose style (tabs, toggles, sliders).
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
@@ -18,52 +17,55 @@ local Mouse = LocalPlayer:GetMouse()
 -- Settings
 local AimbotEnabled = false
 local SilentAimEnabled = false
-local FOVRadius = 150  -- FOV circle radius
+local FOVRadius = 150
 local ShowFOVCircle = true
 local ESPEnabled = false
 local MenuVisible = false
 
--- GUI Elements (Simple Neverlose-like menu using ScreenGui)
+-- GUI Elements (Black-themed Neverlose-like menu using ScreenGui)
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Parent = game.CoreGui  -- Use CoreGui for overlay
+ScreenGui.Parent = game.CoreGui
 ScreenGui.IgnoreGuiInset = true
 
 local MainFrame = Instance.new("Frame")
 MainFrame.Size = UDim2.new(0, 400, 0, 300)
 MainFrame.Position = UDim2.new(0.5, -200, 0.5, -150)
-MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+MainFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0) -- Black background
 MainFrame.BorderSizePixel = 0
 MainFrame.Visible = false
 MainFrame.Parent = ScreenGui
 
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, 0, 0, 30)
-Title.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-Title.Text = "Neverlose-like Cheat Menu for Roblox"
+Title.BackgroundColor3 = Color3.fromRGB(20, 20, 20) -- Dark gray for contrast
+Title.Text = "Neverlose-like Cheat Menu"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.TextSize = 18
+Title.Font = Enum.Font.SourceSansBold
 Title.Parent = MainFrame
 
--- Tabs (Simple buttons for tabs)
+-- Tabs (Black-themed buttons)
 local TabFrame = Instance.new("Frame")
 TabFrame.Size = UDim2.new(1, 0, 0, 30)
 TabFrame.Position = UDim2.new(0, 0, 0, 30)
-TabFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+TabFrame.BackgroundColor3 = Color3.fromRGB(10, 10, 10) -- Very dark gray
 TabFrame.Parent = MainFrame
 
 local AimbotTabButton = Instance.new("TextButton")
 AimbotTabButton.Size = UDim2.new(0.5, 0, 1, 0)
 AimbotTabButton.Text = "Aimbot"
-AimbotTabButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+AimbotTabButton.BackgroundColor3 = Color3.fromRGB(30, 30, 30) -- Darker button
 AimbotTabButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+AimbotTabButton.Font = Enum.Font.SourceSansBold
 AimbotTabButton.Parent = TabFrame
 
 local VisualsTabButton = Instance.new("TextButton")
 VisualsTabButton.Size = UDim2.new(0.5, 0, 1, 0)
 VisualsTabButton.Position = UDim2.new(0.5, 0, 0, 0)
 VisualsTabButton.Text = "Visuals"
-VisualsTabButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+VisualsTabButton.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 VisualsTabButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+VisualsTabButton.Font = Enum.Font.SourceSansBold
 VisualsTabButton.Parent = TabFrame
 
 -- Content Frames
@@ -85,8 +87,9 @@ VisualsContent.Visible = false
 local AimbotToggle = Instance.new("TextButton")
 AimbotToggle.Size = UDim2.new(1, 0, 0, 30)
 AimbotToggle.Text = "Aimbot: Off"
-AimbotToggle.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+AimbotToggle.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 AimbotToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
+AimbotToggle.Font = Enum.Font.SourceSans
 AimbotToggle.Parent = AimbotContent
 AimbotToggle.MouseButton1Click:Connect(function()
     AimbotEnabled = not AimbotEnabled
@@ -97,8 +100,9 @@ local SilentAimToggle = Instance.new("TextButton")
 SilentAimToggle.Size = UDim2.new(1, 0, 0, 30)
 SilentAimToggle.Position = UDim2.new(0, 0, 0, 30)
 SilentAimToggle.Text = "Silent Aim: Off"
-SilentAimToggle.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+SilentAimToggle.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 SilentAimToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
+SilentAimToggle.Font = Enum.Font.SourceSans
 SilentAimToggle.Parent = AimbotContent
 SilentAimToggle.MouseButton1Click:Connect(function()
     SilentAimEnabled = not SilentAimEnabled
@@ -109,11 +113,10 @@ local FOVSliderLabel = Instance.new("TextLabel")
 FOVSliderLabel.Size = UDim2.new(1, 0, 0, 30)
 FOVSliderLabel.Position = UDim2.new(0, 0, 0, 60)
 FOVSliderLabel.Text = "FOV Radius: 150"
-FOVSliderLabel.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+FOVSliderLabel.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 FOVSliderLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+FOVSliderLabel.Font = Enum.Font.SourceSans
 FOVSliderLabel.Parent = AimbotContent
-
--- Simple slider simulation (click to increase/decrease)
 FOVSliderLabel.MouseButton1Click:Connect(function()
     FOVRadius = FOVRadius + 10
     if FOVRadius > 500 then FOVRadius = 50 end
@@ -124,8 +127,9 @@ end)
 local ESPToggle = Instance.new("TextButton")
 ESPToggle.Size = UDim2.new(1, 0, 0, 30)
 ESPToggle.Text = "ESP: Off"
-ESPToggle.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+ESPToggle.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 ESPToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
+ESPToggle.Font = Enum.Font.SourceSans
 ESPToggle.Parent = VisualsContent
 ESPToggle.MouseButton1Click:Connect(function()
     ESPEnabled = not ESPEnabled
@@ -136,8 +140,9 @@ local FOVCircleToggle = Instance.new("TextButton")
 FOVCircleToggle.Size = UDim2.new(1, 0, 0, 30)
 FOVCircleToggle.Position = UDim2.new(0, 0, 0, 30)
 FOVCircleToggle.Text = "Show FOV Circle: On"
-FOVCircleToggle.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+FOVCircleToggle.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 FOVCircleToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
+FOVCircleToggle.Font = Enum.Font.SourceSans
 FOVCircleToggle.Parent = VisualsContent
 FOVCircleToggle.MouseButton1Click:Connect(function()
     ShowFOVCircle = not ShowFOVCircle
@@ -164,7 +169,7 @@ UserInputService.InputBegan:Connect(function(input)
     end
 end)
 
--- FOV Circle (using Drawing API)
+-- FOV Circle
 local FOVCircle = Drawing.new("Circle")
 FOVCircle.Thickness = 1
 FOVCircle.NumSides = 100
@@ -227,15 +232,11 @@ local function UpdateESP()
     end
 end
 
--- Add ESP for existing players
 for _, player in pairs(Players:GetPlayers()) do
     AddESP(player)
 end
 
--- Add for new players
 Players.PlayerAdded:Connect(AddESP)
-
--- Remove on leave
 Players.PlayerRemoving:Connect(function(player)
     if ESPDrawings[player] then
         ESPDrawings[player].Box:Remove()
@@ -244,7 +245,6 @@ Players.PlayerRemoving:Connect(function(player)
     end
 end)
 
--- Get Closest Player in FOV
 local function GetClosestPlayerInFOV()
     local closest = nil
     local minDist = FOVRadius
@@ -263,7 +263,6 @@ local function GetClosestPlayerInFOV()
     return closest
 end
 
--- Aimbot (Visible Aim Lock)
 RunService.RenderStepped:Connect(function()
     if AimbotEnabled then
         local target = GetClosestPlayerInFOV()
@@ -273,25 +272,21 @@ RunService.RenderStepped:Connect(function()
         end
     end
     
-    -- Update FOV Circle
     FOVCircle.Radius = FOVRadius
     FOVCircle.Position = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2 + GuiService:GetGuiInset().Y)
     FOVCircle.Visible = ShowFOVCircle
     
-    -- Update ESP
     UpdateESP()
 end)
 
--- Silent Aim Hook (Hooks workspace:FindPartOnRayWithIgnoreList)
 local oldNamecall
 oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
     local args = {...}
     if SilentAimEnabled and getnamecallmethod() == "FindPartOnRayWithIgnoreList" and self == Workspace then
         local target = GetClosestPlayerInFOV()
         if target and target.Character and target.Character:FindFirstChild("Head") then
-            -- Redirect ray to head
             local origin = args[1].Origin
-            local direction = (target.Character.Head.Position - origin).Unit * 1000  -- Long ray
+            local direction = (target.Character.Head.Position - origin).Unit * 1000
             args[1] = Ray.new(origin, direction)
         end
     end
