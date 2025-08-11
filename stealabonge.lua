@@ -1,296 +1,288 @@
--- Roblox Cheat Script: Aimbot with FOV Circle, Silent Aim, ESP, and Neverlose-like GUI with Black Background
--- Opens on 'M' key
--- Note: This script assumes you're using an exploit that supports Drawing API and UserInputService.
--- For Silent Aim, it hooks raycasting (works in games using workspace:FindPartOnRay).
--- GUI uses a black-themed custom menu inspired by Neverlose style (tabs, toggles, sliders).
+-- CatHub Script for Murder Mystery 2
+-- Features: Loading Animation, ESP for Sheriff/Murderer, Noclip, Walkspeed
+-- Note: This is a sample script for educational purposes. Using cheats in games like Roblox can violate terms of service and lead to bans. Use at your own risk.
 
 local Players = game:GetService("Players")
-local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
-local Workspace = game:GetService("Workspace")
-local GuiService = game:GetService("GuiService")
+local UserInputService = game:GetService("UserInputService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Lighting = game:GetService("Lighting")
 
 local LocalPlayer = Players.LocalPlayer
-local Camera = Workspace.CurrentCamera
-local Mouse = LocalPlayer:GetMouse()
+local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+local Humanoid = Character:WaitForChild("Humanoid")
 
--- Settings
-local AimbotEnabled = false
-local SilentAimEnabled = false
-local FOVRadius = 150
-local ShowFOVCircle = true
-local ESPEnabled = false
-local MenuVisible = false
+-- GUI Library: Using Roblox's built-in GUI with Tween animations for beauty
 
--- GUI Elements (Black-themed Neverlose-like menu using ScreenGui)
+-- Create ScreenGui
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Parent = game.CoreGui
-ScreenGui.IgnoreGuiInset = true
+ScreenGui.Name = "CatHubGui"
 
+-- Loading Screen
+local LoadingFrame = Instance.new("Frame")
+LoadingFrame.Size = UDim2.new(1, 0, 1, 0)
+LoadingFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+LoadingFrame.BackgroundTransparency = 0.5
+LoadingFrame.Parent = ScreenGui
+
+local LoadingText = Instance.new("TextLabel")
+LoadingText.Size = UDim2.new(0.5, 0, 0.1, 0)
+LoadingText.Position = UDim2.new(0.25, 0, 0.4, 0)
+LoadingText.Text = "CatHub"
+LoadingText.Font = Enum.Font.GothamBold
+LoadingText.TextSize = 50
+LoadingText.TextColor3 = Color3.fromRGB(255, 255, 255)
+LoadingText.BackgroundTransparency = 1
+LoadingText.Parent = LoadingFrame
+
+local LoadingSubText = Instance.new("TextLabel")
+LoadingSubText.Size = UDim2.new(0.5, 0, 0.05, 0)
+LoadingSubText.Position = UDim2.new(0.25, 0, 0.5, 0)
+LoadingSubText.Text = "Please wait, script is loading..."
+LoadingSubText.Font = Enum.Font.Gotham
+LoadingSubText.TextSize = 20
+LoadingSubText.TextColor3 = Color3.fromRGB(200, 200, 200)
+LoadingSubText.BackgroundTransparency = 1
+LoadingSubText.Parent = LoadingFrame
+
+-- Loading Animation: Fade in and pulse
+local function PulseAnimation(label)
+    while true do
+        TweenService:Create(label, TweenInfo.new(1, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {TextTransparency = 0.5}):Play()
+        wait(1)
+        TweenService:Create(label, TweenInfo.new(1, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {TextTransparency = 0}):Play()
+        wait(1)
+    end
+end
+
+coroutine.wrap(PulseAnimation)(LoadingText)
+
+-- Simulate loading time
+wait(3)  -- Adjust for longer/shorter loading
+
+-- Fade out loading screen
+TweenService:Create(LoadingFrame, TweenInfo.new(1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {BackgroundTransparency = 1}):Play()
+wait(1)
+LoadingFrame:Destroy()
+
+-- Main GUI Frame
 local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 400, 0, 300)
-MainFrame.Position = UDim2.new(0.5, -200, 0.5, -150)
-MainFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0) -- Black background
+MainFrame.Size = UDim2.new(0.3, 0, 0.5, 0)
+MainFrame.Position = UDim2.new(0.35, 0, 0.25, 0)
+MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 MainFrame.BorderSizePixel = 0
-MainFrame.Visible = false
 MainFrame.Parent = ScreenGui
+MainFrame.Visible = false  -- Will animate in
 
+-- Title
 local Title = Instance.new("TextLabel")
-Title.Size = UDim2.new(1, 0, 0, 30)
-Title.BackgroundColor3 = Color3.fromRGB(20, 20, 20) -- Dark gray for contrast
-Title.Text = "Neverlose-like Cheat Menu"
+Title.Size = UDim2.new(1, 0, 0.1, 0)
+Title.Text = "CatHub - MM2 Script"
+Title.Font = Enum.Font.GothamBold
+Title.TextSize = 24
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
-Title.TextSize = 18
-Title.Font = Enum.Font.SourceSansBold
+Title.BackgroundTransparency = 1
 Title.Parent = MainFrame
 
--- Tabs (Black-themed buttons)
-local TabFrame = Instance.new("Frame")
-TabFrame.Size = UDim2.new(1, 0, 0, 30)
-TabFrame.Position = UDim2.new(0, 0, 0, 30)
-TabFrame.BackgroundColor3 = Color3.fromRGB(10, 10, 10) -- Very dark gray
-TabFrame.Parent = MainFrame
-
-local AimbotTabButton = Instance.new("TextButton")
-AimbotTabButton.Size = UDim2.new(0.5, 0, 1, 0)
-AimbotTabButton.Text = "Aimbot"
-AimbotTabButton.BackgroundColor3 = Color3.fromRGB(30, 30, 30) -- Darker button
-AimbotTabButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-AimbotTabButton.Font = Enum.Font.SourceSansBold
-AimbotTabButton.Parent = TabFrame
-
-local VisualsTabButton = Instance.new("TextButton")
-VisualsTabButton.Size = UDim2.new(0.5, 0, 1, 0)
-VisualsTabButton.Position = UDim2.new(0.5, 0, 0, 0)
-VisualsTabButton.Text = "Visuals"
-VisualsTabButton.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-VisualsTabButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-VisualsTabButton.Font = Enum.Font.SourceSansBold
-VisualsTabButton.Parent = TabFrame
-
--- Content Frames
-local AimbotContent = Instance.new("Frame")
-AimbotContent.Size = UDim2.new(1, 0, 1, -60)
-AimbotContent.Position = UDim2.new(0, 0, 0, 60)
-AimbotContent.BackgroundTransparency = 1
-AimbotContent.Parent = MainFrame
-AimbotContent.Visible = true
-
-local VisualsContent = Instance.new("Frame")
-VisualsContent.Size = UDim2.new(1, 0, 1, -60)
-VisualsContent.Position = UDim2.new(0, 0, 0, 60)
-VisualsContent.BackgroundTransparency = 1
-VisualsContent.Parent = MainFrame
-VisualsContent.Visible = false
-
--- Aimbot Controls
-local AimbotToggle = Instance.new("TextButton")
-AimbotToggle.Size = UDim2.new(1, 0, 0, 30)
-AimbotToggle.Text = "Aimbot: Off"
-AimbotToggle.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-AimbotToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
-AimbotToggle.Font = Enum.Font.SourceSans
-AimbotToggle.Parent = AimbotContent
-AimbotToggle.MouseButton1Click:Connect(function()
-    AimbotEnabled = not AimbotEnabled
-    AimbotToggle.Text = "Aimbot: " .. (AimbotEnabled and "On" or "Off")
-end)
-
-local SilentAimToggle = Instance.new("TextButton")
-SilentAimToggle.Size = UDim2.new(1, 0, 0, 30)
-SilentAimToggle.Position = UDim2.new(0, 0, 0, 30)
-SilentAimToggle.Text = "Silent Aim: Off"
-SilentAimToggle.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-SilentAimToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
-SilentAimToggle.Font = Enum.Font.SourceSans
-SilentAimToggle.Parent = AimbotContent
-SilentAimToggle.MouseButton1Click:Connect(function()
-    SilentAimEnabled = not SilentAimEnabled
-    SilentAimToggle.Text = "Silent Aim: " .. (SilentAimEnabled and "On" or "Off")
-end)
-
-local FOVSliderLabel = Instance.new("TextLabel")
-FOVSliderLabel.Size = UDim2.new(1, 0, 0, 30)
-FOVSliderLabel.Position = UDim2.new(0, 0, 0, 60)
-FOVSliderLabel.Text = "FOV Radius: 150"
-FOVSliderLabel.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-FOVSliderLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-FOVSliderLabel.Font = Enum.Font.SourceSans
-FOVSliderLabel.Parent = AimbotContent
-FOVSliderLabel.MouseButton1Click:Connect(function()
-    FOVRadius = FOVRadius + 10
-    if FOVRadius > 500 then FOVRadius = 50 end
-    FOVSliderLabel.Text = "FOV Radius: " .. FOVRadius
-end)
-
--- Visuals Controls
+-- ESP Toggle
 local ESPToggle = Instance.new("TextButton")
-ESPToggle.Size = UDim2.new(1, 0, 0, 30)
+ESPToggle.Size = UDim2.new(0.8, 0, 0.1, 0)
+ESPToggle.Position = UDim2.new(0.1, 0, 0.15, 0)
 ESPToggle.Text = "ESP: Off"
-ESPToggle.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+ESPToggle.Font = Enum.Font.Gotham
+ESPToggle.TextSize = 18
+ESPToggle.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
 ESPToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
-ESPToggle.Font = Enum.Font.SourceSans
-ESPToggle.Parent = VisualsContent
-ESPToggle.MouseButton1Click:Connect(function()
-    ESPEnabled = not ESPEnabled
-    ESPToggle.Text = "ESP: " .. (ESPEnabled and "On" or "Off")
-end)
+ESPToggle.Parent = MainFrame
 
-local FOVCircleToggle = Instance.new("TextButton")
-FOVCircleToggle.Size = UDim2.new(1, 0, 0, 30)
-FOVCircleToggle.Position = UDim2.new(0, 0, 0, 30)
-FOVCircleToggle.Text = "Show FOV Circle: On"
-FOVCircleToggle.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-FOVCircleToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
-FOVCircleToggle.Font = Enum.Font.SourceSans
-FOVCircleToggle.Parent = VisualsContent
-FOVCircleToggle.MouseButton1Click:Connect(function()
-    ShowFOVCircle = not ShowFOVCircle
-    FOVCircleToggle.Text = "Show FOV Circle: " .. (ShowFOVCircle and "On" or "Off")
-end)
+-- Sheriff/Murderer Settings (Toggles)
+local SheriffESP = Instance.new("TextButton")
+SheriffESP.Size = UDim2.new(0.4, 0, 0.1, 0)
+SheriffESP.Position = UDim2.new(0.1, 0, 0.3, 0)
+SheriffESP.Text = "Sheriff ESP: On"
+SheriffESP.Font = Enum.Font.Gotham
+SheriffESP.TextSize = 16
+SheriffESP.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+SheriffESP.TextColor3 = Color3.fromRGB(0, 255, 0)
+SheriffESP.Parent = MainFrame
 
--- Tab Switching
-AimbotTabButton.MouseButton1Click:Connect(function()
-    AimbotContent.Visible = true
-    VisualsContent.Visible = false
-end)
+local MurdererESP = Instance.new("TextButton")
+MurdererESP.Size = UDim2.new(0.4, 0, 0.1, 0)
+MurdererESP.Position = UDim2.new(0.5, 0, 0.3, 0)
+MurdererESP.Text = "Murderer ESP: On"
+MurdererESP.Font = Enum.Font.Gotham
+MurdererESP.TextSize = 16
+MurdererESP.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+MurdererESP.TextColor3 = Color3.fromRGB(255, 0, 0)
+MurdererESP.Parent = MainFrame
 
-VisualsTabButton.MouseButton1Click:Connect(function()
-    AimbotContent.Visible = false
-    VisualsContent.Visible = true
-end)
+-- Noclip Toggle
+local NoclipToggle = Instance.new("TextButton")
+NoclipToggle.Size = UDim2.new(0.8, 0, 0.1, 0)
+NoclipToggle.Position = UDim2.new(0.1, 0, 0.45, 0)
+NoclipToggle.Text = "Noclip: Off"
+NoclipToggle.Font = Enum.Font.Gotham
+NoclipToggle.TextSize = 18
+NoclipToggle.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+NoclipToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
+NoclipToggle.Parent = MainFrame
 
--- Menu Toggle on 'M'
-UserInputService.InputBegan:Connect(function(input)
-    if input.KeyCode == Enum.KeyCode.M then
-        MenuVisible = not MenuVisible
-        MainFrame.Visible = MenuVisible
-        Mouse.Icon = MenuVisible and "rbxasset://textures\\GunWaitCursor.png" or "rbxasset://textures\\GunCursor.png"
-    end
-end)
+-- Walkspeed Slider (Simple TextBox for value)
+local WalkspeedLabel = Instance.new("TextLabel")
+WalkspeedLabel.Size = UDim2.new(0.4, 0, 0.1, 0)
+WalkspeedLabel.Position = UDim2.new(0.1, 0, 0.6, 0)
+WalkspeedLabel.Text = "Walkspeed:"
+WalkspeedLabel.Font = Enum.Font.Gotham
+WalkspeedLabel.TextSize = 18
+WalkspeedLabel.BackgroundTransparency = 1
+WalkspeedLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+WalkspeedLabel.Parent = MainFrame
 
--- FOV Circle
-local FOVCircle = Drawing.new("Circle")
-FOVCircle.Thickness = 1
-FOVCircle.NumSides = 100
-FOVCircle.Radius = FOVRadius
-FOVCircle.Color = Color3.fromRGB(255, 0, 0)
-FOVCircle.Visible = false
-FOVCircle.Filled = false
-FOVCircle.Transparency = 1
-FOVCircle.Position = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+local WalkspeedBox = Instance.new("TextBox")
+WalkspeedBox.Size = UDim2.new(0.4, 0, 0.1, 0)
+WalkspeedBox.Position = UDim2.new(0.5, 0, 0.6, 0)
+WalkspeedBox.Text = "16"  -- Default
+WalkspeedBox.Font = Enum.Font.Gotham
+WalkspeedBox.TextSize = 18
+WalkspeedBox.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+WalkspeedBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+WalkspeedBox.Parent = MainFrame
 
--- ESP Drawings
-local ESPDrawings = {}
+-- Animate MainFrame In
+MainFrame.Visible = true
+TweenService:Create(MainFrame, TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Position = UDim2.new(0.35, 0, 0.25, 0), Size = UDim2.new(0.3, 0, 0.5, 0)}):Play()  -- Assuming starts off-screen or small
 
-local function AddESP(player)
+-- ESP Functionality
+local ESPEnabled = false
+local SheriffESPEnabled = true
+local MurdererESPEnabled = true
+
+local Highlights = {}
+
+local function CreateESP(player)
     if player == LocalPlayer or not player.Character then return end
-    local Box = Drawing.new("Square")
-    Box.Thickness = 1
-    Box.Color = Color3.fromRGB(0, 255, 0)
-    Box.Filled = false
-    Box.Transparency = 1
-    Box.Visible = false
-    
-    local Name = Drawing.new("Text")
-    Name.Text = player.Name
-    Name.Size = 16
-    Name.Color = Color3.fromRGB(255, 255, 255)
-    Name.Transparency = 1
-    Name.Visible = false
-    Name.Center = true
-    
-    ESPDrawings[player] = {Box = Box, Name = Name}
+    local highlight = Instance.new("Highlight")
+    highlight.Parent = player.Character
+    highlight.Adornee = player.Character
+    highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+    highlight.FillTransparency = 0.5
+    highlight.OutlineTransparency = 0
+    Highlights[player] = highlight
 end
 
 local function UpdateESP()
-    for player, drawings in pairs(ESPDrawings) do
-        if ESPEnabled and player.Character and player.Character:FindFirstChild("HumanoidRootPart") and player.Character.Humanoid.Health > 0 then
-            local root = player.Character.HumanoidRootPart
-            local head = player.Character:FindFirstChild("Head")
-            local screenPos, onScreen = Camera:WorldToViewportPoint(root.Position)
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character then
+            local backpack = player:FindFirstChild("Backpack") or player.Character:FindFirstChildOfClass("Backpack")
+            local tool = player.Character:FindFirstChildOfClass("Tool")
             
-            if onScreen then
-                local top = Camera:WorldToViewportPoint(head.Position + Vector3.new(0, 1, 0))
-                local bottom = Camera:WorldToViewportPoint(root.Position - Vector3.new(0, 3, 0))
-                local size = Vector2.new(math.abs(top.Y - bottom.Y) / 2, math.abs(top.Y - bottom.Y))
-                
-                drawings.Box.Size = size
-                drawings.Box.Position = Vector2.new(screenPos.X - size.X / 2, screenPos.Y - size.Y / 2)
-                drawings.Box.Visible = true
-                
-                drawings.Name.Position = Vector2.new(screenPos.X, screenPos.Y - size.Y / 2 - 20)
-                drawings.Name.Visible = true
+            local isSheriff = false
+            local isMurderer = false
+            
+            if tool then
+                if tool.Name == "Gun" then isSheriff = true end
+                if tool.Name == "Knife" then isMurderer = true end
+            elseif backpack then
+                if backpack:FindFirstChild("Gun") then isSheriff = true end
+                if backpack:FindFirstChild("Knife") then isMurderer = true end
+            end
+            
+            local highlight = Highlights[player]
+            if not highlight then
+                CreateESP(player)
+                highlight = Highlights[player]
+            end
+            
+            if ESPEnabled then
+                if (isSheriff and SheriffESPEnabled) then
+                    highlight.FillColor = Color3.fromRGB(0, 0, 255)  -- Blue for Sheriff
+                    highlight.Enabled = true
+                elseif (isMurderer and MurdererESPEnabled) then
+                    highlight.FillColor = Color3.fromRGB(255, 0, 0)  -- Red for Murderer
+                    highlight.Enabled = true
+                else
+                    highlight.Enabled = false
+                end
             else
-                drawings.Box.Visible = false
-                drawings.Name.Visible = false
-            end
-        else
-            drawings.Box.Visible = false
-            drawings.Name.Visible = false
-        end
-    end
-end
-
-for _, player in pairs(Players:GetPlayers()) do
-    AddESP(player)
-end
-
-Players.PlayerAdded:Connect(AddESP)
-Players.PlayerRemoving:Connect(function(player)
-    if ESPDrawings[player] then
-        ESPDrawings[player].Box:Remove()
-        ESPDrawings[player].Name:Remove()
-        ESPDrawings[player] = nil
-    end
-end)
-
-local function GetClosestPlayerInFOV()
-    local closest = nil
-    local minDist = FOVRadius
-    local mousePos = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
-    
-    for _, player in pairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("Humanoid") and player.Character.Humanoid.Health > 0 and player.Character:FindFirstChild("Head") then
-            local headPos = Camera:WorldToViewportPoint(player.Character.Head.Position)
-            local dist = (Vector2.new(headPos.X, headPos.Y) - mousePos).Magnitude
-            if dist < minDist then
-                minDist = dist
-                closest = player
+                highlight.Enabled = false
             end
         end
     end
-    return closest
 end
 
-RunService.RenderStepped:Connect(function()
-    if AimbotEnabled then
-        local target = GetClosestPlayerInFOV()
-        if target and target.Character and target.Character:FindFirstChild("Head") then
-            local headPos = target.Character.Head.Position
-            Camera.CFrame = CFrame.new(Camera.CFrame.Position, headPos)
-        end
-    end
-    
-    FOVCircle.Radius = FOVRadius
-    FOVCircle.Position = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2 + GuiService:GetGuiInset().Y)
-    FOVCircle.Visible = ShowFOVCircle
-    
+-- Toggle ESP
+ESPToggle.MouseButton1Click:Connect(function()
+    ESPEnabled = not ESPEnabled
+    ESPToggle.Text = "ESP: " .. (ESPEnabled and "On" or "Off")
     UpdateESP()
 end)
 
-local oldNamecall
-oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
-    local args = {...}
-    if SilentAimEnabled and getnamecallmethod() == "FindPartOnRayWithIgnoreList" and self == Workspace then
-        local target = GetClosestPlayerInFOV()
-        if target and target.Character and target.Character:FindFirstChild("Head") then
-            local origin = args[1].Origin
-            local direction = (target.Character.Head.Position - origin).Unit * 1000
-            args[1] = Ray.new(origin, direction)
-        end
-    end
-    return oldNamecall(self, unpack(args))
+-- Toggle Sheriff ESP
+SheriffESP.MouseButton1Click:Connect(function()
+    SheriffESPEnabled = not SheriffESPEnabled
+    SheriffESP.Text = "Sheriff ESP: " .. (SheriffESPEnabled and "On" or "Off")
+    SheriffESP.TextColor3 = SheriffESPEnabled and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(255, 0, 0)
+    UpdateESP()
 end)
 
-print("Script Loaded! Press 'M' to open menu.")
+-- Toggle Murderer ESP
+MurdererESP.MouseButton1Click:Connect(function()
+    MurdererESPEnabled = not MurdererESPEnabled
+    MurdererESP.Text = "Murderer ESP: " .. (MurdererESPEnabled and "On" or "Off")
+    MurdererESP.TextColor3 = MurdererESPEnabled and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(255, 0, 0)
+    UpdateESP()
+end)
+
+-- Run ESP update every frame
+RunService.RenderStepped:Connect(UpdateESP)
+
+Players.PlayerAdded:Connect(function(player)
+    player.CharacterAdded:Connect(function()
+        UpdateESP()
+    end)
+end)
+
+-- Noclip Functionality
+local NoclipEnabled = false
+local function NoclipLoop()
+    if NoclipEnabled then
+        for _, part in ipairs(Character:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.CanCollide = false
+            end
+        end
+    end
+end
+
+RunService.Stepped:Connect(NoclipLoop)
+
+NoclipToggle.MouseButton1Click:Connect(function()
+    NoclipEnabled = not NoclipEnabled
+    NoclipToggle.Text = "Noclip: " .. (NoclipEnabled and "On" or "Off")
+end)
+
+-- Walkspeed
+WalkspeedBox.FocusLost:Connect(function()
+    local speed = tonumber(WalkspeedBox.Text)
+    if speed then
+        Humanoid.WalkSpeed = speed
+    end
+end)
+
+-- Handle Character Respawn
+LocalPlayer.CharacterAdded:Connect(function(newChar)
+    Character = newChar
+    Humanoid = newChar:WaitForChild("Humanoid")
+    WalkspeedBox.Text = tostring(Humanoid.WalkSpeed)  -- Reset to current
+end)
+
+-- Close GUI with keybind (e.g., RightShift)
+UserInputService.InputBegan:Connect(function(input)
+    if input.KeyCode == Enum.KeyCode.RightShift then
+        ScreenGui.Enabled = not ScreenGui.Enabled
+    end
+end)
+
+print("CatHub Loaded!")
