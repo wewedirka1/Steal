@@ -1,97 +1,82 @@
+-- ================================================================================= --
+--                             СКРИПТ ДЛЯ ТЕЛЕПОРТА НА РАНДОМНЫЙ СЕРВЕР               --
+--                                  Игра: Steal a brainrot                          --
+-- ================================================================================= --
+
+-- // ============================= [ НАСТРОЙКИ ] ============================= //
+
+-- Place ID — для телепорта (не трогать)
+local PLACE_ID = 17094244510
+
+-- Universe ID — для получения списка серверов (не трогать)
+local UNIVERSE_ID = 5891316523
+
+-- ВАЖНО! Выберите функцию под ваш инжектор:
+-- Удалите комментарии (--[[ ... ]]) перед нужной строкой
+
+local requestFunction = request -- Для Krnl, Fluxus, Script-Ware
+--[[
+local requestFunction = syn.request -- Для Synapse X
+]]
+
+-- // ============================ [ ЛОГИКА СКРИПТА ] ============================ //
+
 local HttpService = game:GetService("HttpService")
 local TeleportService = game:GetService("TeleportService")
 local Players = game:GetService("Players")
-local player = Players.LocalPlayer
+local LocalPlayer = Players.LocalPlayer
 
--- Список петов
-local targetPets = {
-    "Chimpanzini Spiderini",
-    "Karkerkar Kurkur",
-    "Los Matteos",
-    "La Vacca Saturno Saturnita",
-    "Agarini la Palini",
-    "Dragon Cannelloni",
-    "Garama and Madundung",
-    "Los Hotspot",
-    "Nuclearo Dinossauro",
-    "Los Combinasionas",
-    "La Grande Combinasion",
-    "Chicleteira Bicicleteira",
-    "Esok Sekolah",
-    "Torrtuginni Dragonfrutini",
-    "Pot Hotspo",
-    "Nooo My Hotspot",
-    "Graipus Medussi",
-    "job job job Sahur",
-    "Los Tralaleritos",
-    "Las Tralaleritas",
-    "Sammyni Spyderini"
-}
-
--- Проверка наличия пета
-local function hasPet()
-    local function checkIn(parent)
-        for _, child in ipairs(parent:GetDescendants()) do
-            if table.find(targetPets, child.Name) then
-                return true
-            end
-        end
-        return false
-    end
-
-    if checkIn(player.Backpack) then return true end
-    if player.Character and checkIn(player.Character) then return true end
-    if checkIn(workspace) then return true end
-    return false
+local function notify(title, text)
+    print(string.format("[RandomJoin] %s: %s", title, text))
+    pcall(function()
+        game.StarterGui:SetCore("SendNotification", { Title = title, Text = text, Duration = 5 })
+    end)
 end
 
--- Телепортация на новый сервер
-local function teleportToNewServer()
-    local placeId = 109983668079237 -- ID игры
-    local url = string.format("https://games.roblox.com/v1/games/%d/servers/Public?sortOrder=Desc&limit=100&excludeFullServers=true", placeId)
+local function joinRandomServer()
+    notify("Подключение", "Получаю список серверов...")
 
     local success, response = pcall(function()
-        local request = HttpService:RequestAsync({
-            Url = url,
-            Method = "GET",
-            Headers = {
-                ["User-Agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36"
-            }
+        return requestFunction({
+            Url = string.format(
+                "https://games.roblox.com/v1/games/%d/servers/Public?sortOrder=Desc&limit=100&excludeFullServers=true",
+                UNIVERSE_ID
+            ),
+            Method = "GET"
         })
-        return request.Success, request.Body
     end)
 
-    if not success then
-        warn("Ошибка получения серверов:", response)
+    if not success or not response then
+        notify("Ошибка", "Не удалось получить список серверов.")
         return
     end
 
-    local data = HttpService:JSONDecode(response)
-    if not data or not data.data then
-        warn("Неверный формат ответа")
+    if response.StatusCode ~= 200 then
+        notify("Ошибка", "Сервер Roblox вернул ошибку: " .. response.StatusMessage)
         return
     end
 
-    for _, server in ipairs(data.data) do
-        local serverId = server.id
-        local teleportSuccess, teleportErr = pcall(function()
-            TeleportService:TeleportToPlaceInstance(placeId, serverId)
-        end)
+    local serverData = HttpService:JSONDecode(response.Body)
+    local servers = serverData.data
 
-        if teleportSuccess then
-            print("Телепортация успешна!")
-            return
-        else
-            warn("Ошибка телепортации:", teleportErr)
-        end
+    if not servers or #servers == 0 then
+        notify("Ошибка", "Нет доступных серверов.")
+        return
     end
+
+    -- Выбираем случайный сервер из списка
+    local randomIndex = math.random(1, #servers)
+    local randomServer = servers[randomIndex]
+    local jobId = randomServer.id
+    local playerCount = randomServer.playing
+
+    notify("Успех", string.format("Выбран сервер с %d игроками. Телепортируюсь...", playerCount))
+
+    pcall(function()
+        TeleportService:TeleportToPlaceInstance(PLACE_ID, jobId, LocalPlayer)
+    end)
 end
 
--- Основной цикл
-while true do
-    if hasPet() then
-        print("Обнаружен целевой пета! Поиск нового сервера...")
-        teleportToNewServer()
-    end
-    wait(10)
-end
+-- Запускаем через 5 секунд после загрузки
+task.wait(5)
+joinRandomServer()
