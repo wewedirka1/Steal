@@ -1,82 +1,59 @@
--- ================================================================================= --
---                             СКРИПТ ДЛЯ ТЕЛЕПОРТА НА РАНДОМНЫЙ СЕРВЕР               --
---                                  Игра: Steal a brainrot                          --
--- ================================================================================= --
-
--- // ============================= [ НАСТРОЙКИ ] ============================= //
-
--- Place ID — для телепорта (не трогать)
-local PLACE_ID = 17094244510
-
--- Universe ID — для получения списка серверов (не трогать)
-local UNIVERSE_ID = 5891316523
-
--- ВАЖНО! Выберите функцию под ваш инжектор:
--- Удалите комментарии (--[[ ... ]]) перед нужной строкой
-
-local requestFunction = request -- Для Krnl, Fluxus, Script-Ware
---[[
-local requestFunction = syn.request -- Для Synapse X
-]]
-
--- // ============================ [ ЛОГИКА СКРИПТА ] ============================ //
-
-local HttpService = game:GetService("HttpService")
 local TeleportService = game:GetService("TeleportService")
 local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
+local player = Players.LocalPlayer
 
-local function notify(title, text)
-    print(string.format("[RandomJoin] %s: %s", title, text))
-    pcall(function()
-        game.StarterGui:SetCore("SendNotification", { Title = title, Text = text, Duration = 5 })
-    end)
-end
+-- Телепортация на рандомный сервер
+local function teleportToRandomServer()
+    local placeId = 109983668079237 -- ID игры
 
-local function joinRandomServer()
-    notify("Подключение", "Получаю список серверов...")
+    local servers = {}
+    local url = string.format("https://games.roblox.com/v1/games/%d/servers/Public?sortOrder=Desc&limit=100&excludeFullServers=true", placeId)
 
     local success, response = pcall(function()
-        return requestFunction({
-            Url = string.format(
-                "https://games.roblox.com/v1/games/%d/servers/Public?sortOrder=Desc&limit=100&excludeFullServers=true",
-                UNIVERSE_ID
-            ),
-            Method = "GET"
+        local request = HttpService:RequestAsync({
+            Url = url,
+            Method = "GET",
+            Headers = {
+                ["User-Agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36"
+            }
         })
+        return request.Success, request.Body
     end)
 
-    if not success or not response then
-        notify("Ошибка", "Не удалось получить список серверов.")
+    if not success then
+        warn("Ошибка получения серверов:", response)
         return
     end
 
-    if response.StatusCode ~= 200 then
-        notify("Ошибка", "Сервер Roblox вернул ошибку: " .. response.StatusMessage)
+    local data = HttpService:JSONDecode(response)
+    if not data or not data.data then
+        warn("Неверный формат ответа")
         return
     end
 
-    local serverData = HttpService:JSONDecode(response.Body)
-    local servers = serverData.data
+    for _, server in ipairs(data.data) do
+        table.insert(servers, server.id)
+    end
 
-    if not servers or #servers == 0 then
-        notify("Ошибка", "Нет доступных серверов.")
+    if #servers == 0 then
+        warn("Нет доступных серверов")
         return
     end
 
-    -- Выбираем случайный сервер из списка
-    local randomIndex = math.random(1, #servers)
-    local randomServer = servers[randomIndex]
-    local jobId = randomServer.id
-    local playerCount = randomServer.playing
-
-    notify("Успех", string.format("Выбран сервер с %d игроками. Телепортируюсь...", playerCount))
-
-    pcall(function()
-        TeleportService:TeleportToPlaceInstance(PLACE_ID, jobId, LocalPlayer)
+    local randomServerId = servers[math.random(1, #servers)]
+    local teleportSuccess, teleportErr = pcall(function()
+        TeleportService:TeleportToPlaceInstance(placeId, randomServerId)
     end)
+
+    if teleportSuccess then
+        print("Телепортация успешна!")
+    else
+        warn("Ошибка телепортации:", teleportErr)
+    end
 end
 
--- Запускаем через 5 секунд после загрузки
-task.wait(5)
-joinRandomServer()
+-- Основной цикл
+while true do
+    teleportToRandomServer()
+    wait(10)
+end
